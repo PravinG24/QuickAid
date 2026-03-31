@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+.python_packages/
+local.settings.json
+
+# Azure Functions local settings (contains secrets)
+backend/local.settings.json
