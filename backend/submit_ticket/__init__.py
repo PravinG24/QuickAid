@@ -1,10 +1,9 @@
 import azure.functions as func
 import logging
 import json
-import uuid
+import os
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
-import os
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("submit_ticket function triggered.")
@@ -45,29 +44,45 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
+    # ── Connect to Cosmos DB ─────────────────────────────────────────────────
+    client    = CosmosClient.from_connection_string(os.environ["COSMOS_CONNECTION_STRING"])
+    database  = client.get_database_client(os.environ["COSMOS_DATABASE_NAME"])
+    container = database.get_container_client(os.environ["COSMOS_CONTAINER_NAME"])
+
+    # ── Generate TCKT-XX ID ──────────────────────────────────────────────────
+    count_query  = "SELECT VALUE COUNT(1) FROM c WHERE c.type = 'ticket'"
+    count_result = list(container.query_items(
+        query=count_query,
+        enable_cross_partition_query=True
+    ))
+    count     = count_result[0] if count_result else 0
+    ticket_id = f"TCKT-{str(count + 1).zfill(2)}"
+
     # ── Build ticket document ────────────────────────────────────────────────
-    ticket_id = str(uuid.uuid4())
+    now    = datetime.now(timezone.utc)
     ticket = {
         "id":          ticket_id,
         "ticketId":    ticket_id,
-        "type":        "ticket",        # ← partition key
+        "type":        "ticket",
         "email":       email,
         "title":       title,
         "description": description,
         "category":    category,
         "status":      "Open",
-        "createdAt":   datetime.now(timezone.utc).isoformat(),
-        "updatedAt":   datetime.now(timezone.utc).isoformat(),
+        "createdAt":   now.isoformat(),
+        "updatedAt":   now.isoformat(),
     }
 
     # ── Write to Cosmos DB ───────────────────────────────────────────────────
     try:
-        client    = CosmosClient.from_connection_string(os.environ["COSMOS_CONNECTION_STRING"])
-        database  = client.get_database_client(os.environ["COSMOS_DATABASE_NAME"])
-        container = database.get_container_client(os.environ["COSMOS_CONTAINER_NAME"])
-
         container.create_item(body=ticket)
 
+    except exceptions.CosmosResourceExistsError:
+        return func.HttpResponse(
+            json.dumps({"error": "Ticket ID conflict. Please try again."}),
+            status_code=409,
+            mimetype="application/json"
+        )
     except exceptions.CosmosHttpResponseError as e:
         logging.error(f"Cosmos DB error: {e}")
         return func.HttpResponse(
@@ -90,8 +105,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "ticketId":  ticket_id,
             "type":      "ticket",
             "status":    "Open",
-            "createdAt": ticket["createdAt"]
-        }),
+            "createdAt": now.isoformat()
+        }), 
         status_code=201,
         mimetype="application/json"
     )
