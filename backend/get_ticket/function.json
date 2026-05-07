@@ -6,8 +6,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["post"],
-      "route": "submit_ticket"
+      "methods": ["get"],
+      "route": "get_ticket"
     },
     {
       "type": "http",

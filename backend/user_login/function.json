@@ -7,7 +7,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["post"],
-      "route": "submit_ticket"
+      "route": "user_login"
     },
     {
       "type": "http",

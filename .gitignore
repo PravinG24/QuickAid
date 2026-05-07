@@ -1,8 +1,11 @@
-__pycache__/
-*.pyc
-.env
-.python_packages/
+# Azure Functions local settings
 local.settings.json
 
-# Azure Functions local settings (contains secrets)
-backend/local.settings.json
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# Logs and temp files
+*.log
+*.zip
