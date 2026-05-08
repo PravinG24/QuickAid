@@ -6,9 +6,11 @@ import hmac
 import os
 from azure.cosmos import CosmosClient
 
+from shared.secrets import get_secret
+
 # ── Helper: hash password ────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
-    secret = os.environ.get("PASSWORD_SECRET", "quickaid-secret-key")
+    secret = get_secret("PasswordPepper", env_fallback="PASSWORD_SECRET")
     hashed = hmac.new(secret.encode(), password.encode(), hashlib.sha256)
     return hashed.hexdigest()
 
