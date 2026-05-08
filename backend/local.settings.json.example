@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+
+    "COSMOS_ENDPOINT":  "https://<your-cosmos-account>.documents.azure.com:443/",
+    "COSMOS_KEY":       "<cosmos-primary-key-or-leave-empty-when-using-Key-Vault>",
+    "COSMOS_DATABASE":  "QuickAidDB",
+    "COSMOS_CONTAINER": "Tickets",
+
+    "KEY_VAULT_URL":       "",
+    "PASSWORD_SECRET":     "<dev-only-pepper-or-leave-empty-when-using-Key-Vault>",
+    "SENDGRID_API_KEY":    "<dev-only-sendgrid-api-key-or-leave-empty-when-using-Key-Vault>",
+    "SENDGRID_FROM_EMAIL": "<verified-sender@yourdomain.com>"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  },
+  "ConnectionStrings": {}
+}
