@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickAid - Register</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./auth.css" />
+  </head>
+  <body class="auth-page register-page">
+    <a class="skip-link" href="#authMain">Skip to registration</a>
+    <main class="entra-layout" id="authMain">
+      <section class="entra-panel">
+        <a class="auth-brand-link" href="./index.html">QuickAid Service Desk</a>
+        <h1>Create account</h1>
+        <p class="entra-subtitle">Create access for ticket tracking, support work, or administration.</p>
+        <form id="registerPageForm" novalidate>
+          <label class="input-shell">
+            <span>Full name</span>
+            <input id="registerName" name="name" type="text" placeholder="Example: Nur Aisyah Rahman…" required autocomplete="name" />
+            <small class="error" id="registerNameError"></small>
+          </label>
+          <label class="input-shell">
+            <span>Email</span>
+            <input id="registerEmail" name="email" type="email" placeholder="you@campus.edu…" required autocomplete="email" spellcheck="false" />
+            <small class="error" id="registerEmailError"></small>
+          </label>
+          <label class="input-shell">
+            <span>Role</span>
+            <select id="registerRole" name="role" required>
+              <option value="user">Student</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+            <small class="error" id="registerRoleError"></small>
+          </label>
+          <label class="input-shell">
+            <span>Password</span>
+            <input id="registerPassword" name="password" type="password" placeholder="Create password…" required autocomplete="new-password" />
+            <small class="error" id="registerPasswordError"></small>
+          </label>
+          <p class="entra-subtitle hidden" id="registerApprovalNote" aria-live="polite"></p>
+
+          <button type="submit" class="signin-btn">Register</button>
+
+          <div class="or-divider"><span>Or</span></div>
+
+          <button type="button" id="registerMicrosoftBtn" class="entra-btn">
+            <img class="entra-logo" src="./assets/Microsoft_Entra_ID_color_icon.png" width="18" height="18" alt="" aria-hidden="true" />
+            <span>Sign In with Microsoft Entra ID</span>
+          </button>
+        </form>
+        <div class="auth-links">
+          <a href="./login.html">Go to login</a>
+          <a href="./index.html">Back to home</a>
+        </div>
+      </section>
+      <section class="entra-hero" aria-label="QuickAid access approval preview">
+        <div class="auth-ops-card">
+          <div class="auth-ops-head">
+            <span>Access Routing</span>
+            <strong>Role Based</strong>
+          </div>
+          <div class="auth-route-list">
+            <div><span>Student</span><strong>Ticket tracking</strong></div>
+            <div><span>Staff</span><strong>Support queue access</strong></div>
+            <div><span>Admin</span><strong>Approval required</strong></div>
+          </div>
+          <div class="auth-ticket-row">
+            <span class="auth-priority low">Ready</span>
+            <div>
+              <strong>Account creation</strong>
+              <p>Users can start tracking campus support requests after sign in.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="./auth.js" defer></script>
+  </body>
+</html>

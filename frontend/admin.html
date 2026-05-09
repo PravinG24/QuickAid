@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickAid Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./ticket-view-shared.css" />
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <aside class="admin-sidebar collapsed" id="adminSidebar" aria-label="Admin navigation">
+      <div class="sidebar-brand">
+        <div class="admin-brand">
+          <div class="admin-brand-logo" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 10.2H20" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.95" />
+              <path d="M6.2 10.2V15.6M9.4 10.2V15.6M14.6 10.2V15.6M17.8 10.2V15.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.95" />
+              <path d="M4.8 15.8H19.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.95" />
+              <path d="M12 4.4L5.3 8.2H18.7L12 4.4Z" fill="currentColor" opacity="0.95" />
+            </svg>
+          </div>
+          <div class="admin-brand-text">
+            <div class="admin-brand-title">QuickAid</div>
+            <div class="admin-brand-sub">Admin Panel</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="sidebar-toggle-btn"
+          id="sidebarToggleBtn"
+          aria-label="Toggle sidebar"
+          aria-controls="adminSidebar"
+          aria-expanded="false"
+        >
+          <svg class="icon-open" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+          </svg>
+          <svg class="icon-close" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="admin-nav" aria-label="Admin sections">
+        <a href="#overview" class="admin-nav-link active" data-page-link="overview">Overview</a>
+        <a href="#manage-tickets" class="admin-nav-link" data-page-link="manage-tickets">Manage Tickets</a>
+        <a href="#support-teams" class="admin-nav-link" data-page-link="support-teams">Support Teams</a>
+      </nav>
+
+    </aside>
+    <button
+      type="button"
+      class="mobile-sidebar-toggle-btn"
+      id="mobileSidebarToggleBtn"
+      aria-label="Toggle sidebar"
+      aria-controls="adminSidebar"
+      aria-expanded="false"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+
+    <main class="admin-main">
+      <header class="app-header">
+        <div class="brand">
+          <p class="brand-kicker">Smart Campus Help Desk</p>
+          <div class="brand-row">
+            <h1>QuickAid</h1>
+            <div class="header-actions">
+              <div class="notif-wrap">
+                <button
+                  type="button"
+                  class="notif-action"
+                  id="adminBtnNotifications"
+                  aria-haspopup="menu"
+                  aria-controls="adminNotifDropdown"
+                  aria-expanded="false"
+                  aria-label="Notifications"
+                >
+                  <span class="notif-bell" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 22C13.1046 22 14 21.1046 14 20H10C10 21.1046 10.8954 22 12 22Z" fill="currentColor" />
+                      <path
+                        d="M18 16.0001H6C5.44772 16.0001 5 15.5523 5 15.0001C5 14.6234 5.20711 14.2741 5.54253 14.0937C6.29012 13.6942 7 12.9206 7 11.0001V8.5001C7 6.01483 8.79086 4.13745 11.232 4.01525C11.4821 4.00244 11.733 4.00244 11.9831 4.01525C14.4242 4.13745 16.2151 6.01483 16.2151 8.5001V11.0001C16.2151 12.9206 16.925 13.6942 17.6726 14.0937C18.008 14.2741 18.2151 14.6234 18.2151 15.0001C18.2151 15.5523 17.7674 16.0001 17.2151 16.0001H18Z"
+                        fill="currentColor"
+                        opacity="0.95"
+                      />
+                    </svg>
+                  </span>
+                  <span class="notif-badge hidden" id="adminNotifBadge" aria-label="Unread notifications count">0</span>
+                </button>
+
+                <div class="notif-dropdown hidden" id="adminNotifDropdown" role="menu" aria-label="Notifications dropdown">
+                  <div class="notif-card">
+                    <div class="notif-head">
+                      <div class="notif-title">Notifications</div>
+                      <div class="notif-sub">
+                        You have <span class="notif-unread-count" id="adminNotifUnreadCount">0</span> unread notifications
+                      </div>
+                    </div>
+                    <div class="notif-divider" aria-hidden="true"></div>
+                    <ul class="notif-list" id="adminNotifList"></ul>
+                    <div class="notif-divider notif-divider-bottom" aria-hidden="true"></div>
+                    <button type="button" class="notif-mark-all" id="adminBtnMarkAllRead">Mark all as read</button>
+                  </div>
+                </div>
+              </div>
+              <a class="ghost-action auth-link icon-login hidden" id="adminBtnSignIn" href="./login.html" aria-label="Login">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor" />
+                  <path d="M4 20C4 16.6863 7.13401 14 11 14H13C16.866 14 20 16.6863 20 20V22H4V20Z" fill="currentColor" opacity="0.9" />
+                </svg>
+              </a>
+              <button type="button" class="ghost-action auth-link icon-login icon-logout hidden" id="adminBtnLogout" aria-label="Log out">
+                <span class="notif-bell" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M15 12H4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                    <path d="M13 4H17C18.1046 4 19 4.89543 19 6V18C19 19.1046 18.1046 20 17 20H13" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="header-copy" id="adminSessionLabel">Signed in as admin</p>
+      </header>
+
+      <section id="overview" class="admin-page active" aria-labelledby="overviewTitle">
+        <article class="section-block" aria-labelledby="overviewTitle">
+          <div class="section-head" id="supportTeamsHead">
+            <h3 id="overviewTitle">Analytics and Report Overview</h3>
+            <div class="range-tabs" role="tablist" aria-label="Date range">
+              <button type="button" class="range-tab active" data-range="today">Today</button>
+              <button type="button" class="range-tab" data-range="week">This Week</button>
+              <button type="button" class="range-tab" data-range="month">This Month</button>
+              <button type="button" class="range-tab" data-range="year">This Year</button>
+            </div>
+          </div>
+
+          <div class="stats-grid three-col overview-musthave-grid">
+            <article class="stat-card">
+              <p class="label">Total Tickets</p>
+              <p class="value" id="overviewTotalTickets">0</p>
+              <p class="meta">System usage signal</p>
+            </article>
+            <article class="stat-card">
+              <p class="label">Avg Resolution Time</p>
+              <p class="value" id="overviewAvgResolutionTime">0h</p>
+              <p class="meta">Most important KPI</p>
+            </article>
+            <article class="stat-card">
+              <p class="label">SLA Response Time</p>
+              <p class="value" id="overviewSlaResponse">0%</p>
+              <p class="meta">First response within 2h</p>
+            </article>
+          </div>
+
+          <div class="overview-kpi-grid three-col">
+            <article class="stat-card">
+              <p class="label">Open Tickets</p>
+              <p class="value" id="overviewOpenTickets">0</p>
+              <p class="meta">Needs immediate action</p>
+            </article>
+            <article class="stat-card">
+              <p class="label">Resolved Tickets</p>
+              <p class="value" id="overviewResolvedTickets">0</p>
+              <p class="meta">Support team output</p>
+            </article>
+            <article class="stat-card">
+              <p class="label">In Progress</p>
+              <p class="value" id="overviewInProgressTickets">0</p>
+              <p class="meta">Current workload</p>
+            </article>
+          </div>
+
+          <div class="overview-chart-grid">
+            <article class="analytic-card">
+              <h4>Tickets by Category</h4>
+              <div class="bar-chart-shell" aria-hidden="true">
+                <div class="bar-chart-y-axis" id="overviewCategoryYAxis"></div>
+                <div class="bar-chart-main">
+                  <div class="mini-bars" id="overviewCategoryBars"></div>
+                  <div class="bar-chart-x-axis" id="overviewCategoryXAxis"></div>
+                </div>
+              </div>
+            </article>
+            <article class="analytic-card">
+              <h4>Priority Distribution</h4>
+              <div class="pie-wrap" aria-hidden="true">
+                <div class="pie-chart" id="overviewPriorityPie"></div>
+                <div class="pie-legend" id="overviewPriorityLegend">
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <article class="analytic-card">
+            <h4>Top Department Performance</h4>
+            <p class="meta">Volume + speed benchmark by department</p>
+            <div class="top-category-performance" id="overviewTopCategoryPerformance"></div>
+          </article>
+
+          <article class="analytic-card full-width">
+            <h4>Weekly Ticket Trends</h4>
+            <div class="line-chart" aria-hidden="true">
+              <canvas id="overviewTrendCanvas" aria-label="Weekly ticket trends line chart"></canvas>
+            </div>
+          </article>
+        </article>
+
+      </section>
+
+      <section id="manage-tickets" class="admin-page" aria-labelledby="manageTitle">
+        <article class="section-block">
+          <div class="section-head">
+            <h3 id="manageTitle">Manage Tickets</h3>
+            <div class="manage-toolbar">
+              <span class="manage-selection-count" id="manageSelectionCount">No tickets selected</span>
+              <button id="openBulkEditBtn" class="primary-btn" type="button" disabled>Bulk Edit Selected</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><input id="manageSelectAll" type="checkbox" aria-label="Select all tickets" /></th>
+                  <th>Ticket ID</th>
+                  <th>User</th>
+                  <th>Issue</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Assigned Team</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="manageTicketsBody">
+                <tr>
+                  <td colspan="9">Loading tickets...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section id="support-teams" class="admin-page" aria-labelledby="teamsTitle">
+        <article class="section-block">
+          <div class="section-head">
+            <div>
+              <h3 id="teamsTitle">Support Teams</h3>
+              <p class="sub">Manage staff, groups, and permissions.</p>
+            </div>
+            <button class="primary-btn" type="button" id="addTeamBtn">Add Team</button>
+          </div>
+          <div class="support-tabs">
+            <button type="button" class="support-tab active" data-support-tab="groups">Groups</button>
+            <button type="button" class="support-tab" data-support-tab="permissions">Permissions</button>
+          </div>
+          <div class="support-search-row" id="supportSearchRow">
+            <input id="supportTeamSearch" class="table-select support-search-input" type="search" placeholder="Search team or staff by name ..." />
+          </div>
+          <div class="team-grid support-team-grid" id="supportTeamsGrid">
+            <article class="team-card">Loading support teams...</article>
+          </div>
+          <div class="support-access-panel hidden" id="supportAccessPanel">
+            <div class="section-head">
+              <div>
+                <h3>Access Requests</h3>
+                <p class="sub">Review and manage user access requests.</p>
+              </div>
+              <select id="supportRequestFilter" class="table-select support-request-filter">
+                <option value="all">All Requests</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Requester</th>
+                    <th>Department</th>
+                    <th>Requested Role</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="supportAccessBody">
+                  <tr><td colspan="6">Select a team to view access requests.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="support-team-detail" class="admin-page" aria-labelledby="teamDetailTitle">
+        <article class="section-block">
+          <div class="section-head">
+            <div>
+              <h3 id="teamDetailTitle">Team Leader</h3>
+              <p class="sub" id="teamDetailSubtitle">Manage selected support team.</p>
+            </div>
+            <button type="button" class="back-icon-btn" id="backToTeamsBtn" aria-label="Back to teams">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="support-team-detail" id="supportTeamDetail"></div>
+
+          <div class="support-staff-cards-section" id="supportGroupsPanel">
+            <div class="section-head">
+              <h3>Team Staff</h3>
+              <button type="button" class="primary-btn" id="addStaffInTeamBtn">Add Staff</button>
+            </div>
+            <div class="staff-card-grid" id="supportStaffCards">
+              <article class="team-card">Select a team to view staff.</article>
+            </div>
+          </div>
+
+        </article>
+      </section>
+    </main>
+
+    <div id="adminTicketModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTicketModalTitle">
+      <div class="admin-modal-backdrop" data-close-admin-modal="true"></div>
+      <div class="admin-modal-card" role="document">
+        <div class="admin-modal-head">
+          <h3 id="adminTicketModalTitle">Ticket Details</h3>
+          <button type="button" class="admin-modal-close" data-close-admin-modal="true" aria-label="Close">×</button>
+        </div>
+        <div class="admin-modal-content" id="adminTicketModalContent"></div>
+      </div>
+    </div>
+
+    <div id="bulkEditDrawer" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulkEditDrawerTitle">
+      <div class="admin-modal-backdrop" data-close-bulk-drawer="true"></div>
+      <div class="admin-modal-card admin-drawer-card" role="document">
+        <div class="admin-modal-head">
+          <h3 id="bulkEditDrawerTitle">Bulk Edit Tickets</h3>
+          <button type="button" class="admin-modal-close" data-close-bulk-drawer="true" aria-label="Close">×</button>
+        </div>
+        <div class="admin-modal-content">
+          <p class="bulk-drawer-kicker">Selection summary</p>
+          <p class="sub" id="bulkDrawerSelectionCount">0 tickets selected</p>
+          <div class="bulk-preview-list" id="bulkDrawerTicketPreview"></div>
+          <p class="bulk-drawer-kicker">Changes to apply</p>
+          <label class="admin-modal-field">
+            <span>Set status (optional)</span>
+            <select id="bulkDrawerStatusSelect" class="table-select">
+              <option value="">No status change</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </label>
+          <label class="admin-modal-field">
+            <span>Assign team (optional)</span>
+            <select id="bulkDrawerTeamSelect" class="table-select">
+              <option value="">No team change</option>
+              <option value="Network Team">Network Team</option>
+              <option value="Software Team">Software Team</option>
+              <option value="Account Team">Account Team</option>
+              <option value="Hardware Team">Hardware Team</option>
+              <option value="Infrastructure">Infrastructure</option>
+              <option value="Application Support">Application Support</option>
+              <option value="Facilities">Facilities</option>
+            </select>
+          </label>
+          <p class="sub bulk-drawer-helper">Leave a field empty to keep the current value for selected tickets.</p>
+          <p class="bulk-drawer-summary" id="bulkDrawerSummary">Choose status, team, or both.</p>
+          <div class="table-actions admin-modal-actions">
+            <button type="button" class="table-btn" id="bulkDrawerClearSelection">Clear Selection</button>
+            <button type="button" class="table-btn update" id="bulkDrawerApplyBtn" disabled>Apply Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="addTeamModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addTeamModalTitle">
+      <div class="admin-modal-backdrop" data-close-add-team-modal="true"></div>
+      <div class="admin-modal-card" role="document">
+        <div class="admin-modal-head">
+          <h3 id="addTeamModalTitle">Add Team</h3>
+          <button type="button" class="admin-modal-close" data-close-add-team-modal="true" aria-label="Close">×</button>
+        </div>
+        <form id="addTeamForm" class="admin-modal-content">
+          <label class="admin-modal-field">
+            <span>Team Name</span>
+            <input id="addTeamName" class="table-select" type="text" placeholder="Example: Library Services" required />
+            <small class="admin-modal-error" id="addTeamNameError"></small>
+          </label>
+          <label class="admin-modal-field">
+            <span>Team Lead (Optional)</span>
+            <input id="addTeamLead" class="table-select" type="text" placeholder="Example: Emma Davis" />
+            <small class="admin-modal-error" id="addTeamLeadError"></small>
+          </label>
+          <label class="admin-modal-field">
+            <span>Team Lead Email (Optional)</span>
+            <input id="addTeamLeadEmail" class="table-select" type="email" placeholder="lead@campus.edu" />
+            <small class="admin-modal-error" id="addTeamLeadEmailError"></small>
+          </label>
+          <!-- <p class="sub">Backend note: this form saves locally first for preview, then attempts POST <code>/api/admin/support_teams</code> sync.</p> -->
+          <p class="sub">New teams are available immediately and will sync when the service is online.</p>
+          <div class="table-actions">
+            <button type="button" class="table-btn" data-close-add-team-modal="true">Cancel</button>
+            <button type="submit" class="table-btn update">Create Team</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="addStaffModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addStaffModalTitle">
+      <div class="admin-modal-backdrop" data-close-add-staff-modal="true"></div>
+      <div class="admin-modal-card" role="document">
+        <div class="admin-modal-head">
+          <h3 id="addStaffModalTitle">Add Staff to Team</h3>
+          <button type="button" class="admin-modal-close" data-close-add-staff-modal="true" aria-label="Close">×</button>
+        </div>
+        <form id="addStaffForm" class="admin-modal-content">
+          <p id="addStaffTeamHint" class="sub">Create a new support staff profile.</p>
+         <!--      <p class="sub">Backend note: staff is added locally first, then synced via POST <code>/api/admin/support_teams/:teamId/staff</code>.</p> -->
+          <p class="sub">Staff are added to the selected team and included in the active support roster.</p>
+          <p id="addStaffFormError" class="admin-form-error hidden" role="alert"></p>
+          <label class="admin-modal-field">
+            <span>Staff Name</span>
+            <input id="addStaffName" class="table-select" type="text" placeholder="Example: Noah King" required />
+          </label>
+          <label class="admin-modal-field">
+            <span>Role</span>
+            <input id="addStaffRole" class="table-select" type="text" placeholder="Example: Support Staff" />
+          </label>
+          <label class="admin-modal-field">
+            <span>Email</span>
+            <input id="addStaffEmail" class="table-select" type="email" placeholder="staff@campus.edu" />
+          </label>
+          <label class="admin-modal-field">
+            <span>Phone (Optional)</span>
+            <input id="addStaffPhone" class="table-select" type="text" placeholder="+1 (555) 000-0000" />
+          </label>
+          <div class="table-actions admin-modal-actions">
+            <button type="button" class="table-btn" data-close-add-staff-modal="true">Cancel</button>
+            <button type="submit" class="table-btn update" id="addStaffSubmitBtn">Add Staff</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="admin-footer university-footer" aria-label="Admin portal footer">
+      <div class="footer-grid">
+        <section class="footer-block">
+          <h2>QuickAid Administration</h2>
+          <p>Administrative console for service operations, assignment workflows, and campus support team governance.</p>
+        </section>
+        <section class="footer-block">
+          <h3>Operations Contact</h3>
+          <p>Email: quickaid.ops@campus.edu</p>
+          <p>Phone: +60 3-8899 4101</p>
+          <p>Escalation: noc@campus.edu</p>
+        </section>
+        <section class="footer-block">
+          <h3>Admin Service Window</h3>
+          <p>Daily Monitoring: 8:00 AM - 10:00 PM</p>
+          <p>Incident Response: 24/7 on-call rotation</p>
+          <p>Last sync source: QuickAid Service Desk Policy 2026</p>
+        </section>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 QuickAid Services</span>
+        <span>Authorized Personnel Use Only</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="./ticket-view-shared.js" defer></script>
+    <script src="./admin.js" defer></script>
+  </body>
+</html>

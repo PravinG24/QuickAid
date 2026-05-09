@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ticket Details</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./ticket-view-shared.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="ticket-page">
+      <header class="ticket-page-head">
+        <button type="button" id="btnBackToList" class="ghost">Back</button>
+        <div class="ticket-page-title-wrap">
+          <h1 id="pageTicketTitle">Ticket #N/A</h1>
+          <p class="muted" id="pageTicketSubject">Ticket subject</p>
+        </div>
+        <div class="ticket-page-badges">
+          <span class="badge" id="pageStatusBadge">Open</span>
+          <span class="detail-priority-pill" id="pagePriorityBadge">Medium</span>
+        </div>
+      </header>
+
+      <section class="ticket-page-grid">
+        <article class="detail-block">
+          <h3>Ticket Details</h3>
+          <div class="ticket-section">
+            <h4>Subject</h4>
+            <p id="pageSubject" class="muted"></p>
+          </div>
+          <div class="ticket-section">
+            <h4>Description</h4>
+            <p id="pageDescription" class="detail-description muted"></p>
+          </div>
+          <div class="ticket-section">
+            <h4 id="pageAttachmentTitle">Attachments</h4>
+            <ul id="pageAttachments" class="attachment-list"></ul>
+          </div>
+        </article>
+
+        <aside class="detail-block">
+          <h3>Ticket Information</h3>
+          <div class="info-row">
+            <span class="info-key">Submitted by</span>
+            <span class="info-val" id="pageSubmittedBy">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Department</span>
+            <span class="info-val" id="pageDepartment">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Assigned to</span>
+            <span class="info-val" id="pageAssignedTo">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Created</span>
+            <span class="info-val" id="pageCreatedAt">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Last Updated</span>
+            <span class="info-val" id="pageUpdatedAt">-</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="detail-block">
+        <h3 id="pageCommentsTitle">Comments (0)</h3>
+        <p class="muted">Conversation and updates from team members</p>
+        <ul id="pageComments" class="comment-list"></ul>
+      </section>
+
+      <section class="detail-block">
+        <h3>Activity Log</h3>
+        <ul id="pageTimeline" class="timeline-list activity-log"></ul>
+      </section>
+
+      <section class="detail-block">
+        <h3>Add Comment</h3>
+        <form id="pageCommentForm">
+          <textarea id="pageNewComment" rows="4" placeholder="Add your comment or update..."></textarea>
+          <p id="pageCommentFeedback" class="muted" role="status" aria-live="polite"></p>
+          <div class="detail-actions">
+            <button id="pageAddCommentBtn" type="submit">Add Comment</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script src="./ticket-view-shared.js" defer></script>
+    <script src="./ticket-detail.js" defer></script>
+  </body>
+  </html>
