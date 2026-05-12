@@ -424,18 +424,39 @@ async function submitTicket(payload) {
   return normalizeTicketRecord({ ...payload, ...result });
 }
 
-async function getTicketsByEmail(email) {
-  // Backend-first mode: GET /api/get_tickets is the only ticket list source.
-  const response = await fetch(
-    `${API_BASE}/api/get_tickets?email=${encodeURIComponent(email)}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "X-Correlation-Id": crypto.randomUUID(),
-      },
-    }
-  );
+function getBackendStatusFilter(status) {
+  const value = String(status || "").trim();
+  if (!value || value === "All") return "";
+  if (value === "Open" || value === "New") return "Open";
+  return value;
+}
+
+function getTicketBackendFilters() {
+  return {
+    status: getBackendStatusFilter(activeStatusTab),
+    category: categoryFilter?.value && categoryFilter.value !== "All" ? categoryFilter.value : "",
+  };
+}
+
+function buildTicketQuery(email, filters = {}) {
+  const params = new URLSearchParams({ email });
+  if (filters.status) params.set("status", filters.status);
+  if (filters.category) params.set("category", filters.category);
+  return params.toString();
+}
+
+async function getTicketsByEmail(email, filters = {}) {
+  // GET /api/get_tickets loads the full list.
+  // GET /api/get_ticket is used when backend-supported status/category filters are active.
+  const hasBackendFilters = Boolean(filters.status || filters.category);
+  const path = hasBackendFilters ? "/api/get_ticket" : "/api/get_tickets";
+  const response = await fetch(`${API_BASE}${path}?${buildTicketQuery(email, filters)}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-Correlation-Id": crypto.randomUUID(),
+    },
+  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
@@ -444,6 +465,23 @@ async function getTicketsByEmail(email) {
   }
 
   return response.json();
+}
+
+async function refreshTicketsFromBackend(email, { useBackendFilters = false, showSkeleton = false } = {}) {
+  const requesterEmail = sanitize(email || trackForm?.trackEmail?.value || loadSession()?.email || "");
+  if (!requesterEmail) return;
+  if (showSkeleton && ticketsSkeleton) ticketsSkeleton.classList.remove("hidden");
+  try {
+    const data = await getTicketsByEmail(requesterEmail, useBackendFilters ? getTicketBackendFilters() : {});
+    lastLoadedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+    persistTicketCache(lastLoadedTickets);
+    applyStatusFilter();
+  } catch (error) {
+    lastLoadedTickets = [];
+    ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
+  } finally {
+    if (showSkeleton && ticketsSkeleton) ticketsSkeleton.classList.add("hidden");
+  }
 }
 
 function renderTickets(items) {
@@ -1429,13 +1467,10 @@ form.addEventListener("submit", async (event) => {
     );
     form.reset();
     descCount.textContent = "0";
-    attachmentInfo.textContent = "";
+    if (attachmentInfo) attachmentInfo.textContent = "";
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    const data = await getTicketsByEmail(payload.email);
-    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
-    persistTicketCache(lastLoadedTickets);
-    applyStatusFilter();
+    await refreshTicketsFromBackend(payload.email);
     setTimeout(() => {
       closeCreateFormWrap();
       openTrackPanel();
@@ -1469,10 +1504,7 @@ trackForm.addEventListener("submit", async (event) => {
   trackBtn.disabled = true;
   trackBtn.textContent = "Searching...";
   try {
-    const data = await getTicketsByEmail(email);
-    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
-    persistTicketCache(lastLoadedTickets);
-    applyStatusFilter();
+    await refreshTicketsFromBackend(email, { useBackendFilters: true });
   } catch (error) {
     lastLoadedTickets = [];
     ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
@@ -1536,7 +1568,9 @@ if (ticketSearch) {
   ticketSearch.addEventListener("input", applyStatusFilter);
 }
 if (categoryFilter) {
-  categoryFilter.addEventListener("change", applyStatusFilter);
+  categoryFilter.addEventListener("change", () => {
+    void refreshTicketsFromBackend(null, { useBackendFilters: true, showSkeleton: true });
+  });
 }
 if (priorityFilter) {
   priorityFilter.addEventListener("change", applyStatusFilter);
@@ -1549,7 +1583,7 @@ if (statusTabs?.length) {
       activeStatusTab = next;
       statusTabs.forEach((b) => b.classList.toggle("active", b === btn));
       statusTabs.forEach((b) => b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-      applyStatusFilter();
+      void refreshTicketsFromBackend(null, { useBackendFilters: true, showSkeleton: true });
     });
   });
 }
@@ -1816,15 +1850,5 @@ if (!bootSession?.email) {
   window.location.replace("./admin.html");
 }
 if (bootSession?.email) {
-  (async () => {
-    try {
-      const data = await getTicketsByEmail(bootSession.email);
-      lastLoadedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
-      persistTicketCache(lastLoadedTickets);
-      applyStatusFilter();
-    } catch {
-      lastLoadedTickets = [];
-      applyStatusFilter();
-    }
-  })();
+  void refreshTicketsFromBackend(bootSession.email);
 }

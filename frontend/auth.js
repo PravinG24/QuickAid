@@ -7,6 +7,9 @@ const DEFAULT_API_BASE = "http://localhost:7071";
 const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
   ? window.QUICKAID_API_BASE
   : DEFAULT_API_BASE;
+const FUNCTION_KEY = Object.prototype.hasOwnProperty.call(window, "QUICKAID_FUNCTION_KEY")
+  ? String(window.QUICKAID_FUNCTION_KEY || "")
+  : "";
 const API_BASE_CONFIGURED = true;
 
 const authHeading = document.querySelector(".login-page .entra-panel h1");
@@ -85,10 +88,18 @@ function toDashboard(session) {
   window.location.href = role === "admin" ? "./admin.html" : "./dashboard.html";
 }
 
-async function apiPost(path, payload) {
+function functionKeyHeaders() {
+  return FUNCTION_KEY ? { "x-functions-key": FUNCTION_KEY } : {};
+}
+
+async function apiPost(path, payload, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.functionKey ? functionKeyHeaders() : {}),
+  };
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
@@ -104,7 +115,7 @@ async function loginWithBackend(email, password) {
     return await apiPost("/api/user_login", { email, password });
   } catch (userError) {
     try {
-      return await apiPost("/api/login/admin", { email, password });
+      return await apiPost("/api/login/admin", { email, password }, { functionKey: true });
     } catch {
       throw userError;
     }
@@ -115,7 +126,7 @@ async function registerAccountWithBackend({ email, name, password, role }) {
   // modify from frontend: backend supports user/admin registration, while staff approval is frontend-only for now.
   if (role === "staff") throw new Error("Staff registration is disabled until backend supports staff accounts.");
   const path = role === "admin" ? "/api/register_admin" : "/api/register_user";
-  return apiPost(path, { email, name, password });
+  return apiPost(path, { email, name, password }, { functionKey: role === "admin" });
 }
 
 function sessionFromBackend(data, fallback = {}) {

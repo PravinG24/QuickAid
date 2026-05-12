@@ -58,6 +58,7 @@ Set global config before page scripts to use a deployed backend:
 ```html
 <script>
   window.QUICKAID_API_BASE = "https://<your-function-app>.azurewebsites.net";
+  window.QUICKAID_FUNCTION_KEY = "<function-or-host-key-for-function-auth-routes>";
 </script>
 ```
 
@@ -66,8 +67,15 @@ For same-origin hosting where the frontend and Azure Functions app share one dom
 ```html
 <script>
   window.QUICKAID_API_BASE = "";
+  window.QUICKAID_FUNCTION_KEY = "<function-or-host-key-for-function-auth-routes>";
 </script>
 ```
+
+Function-key protected endpoints:
+- `POST /api/register_admin`
+- `POST /api/login/admin`
+
+The frontend sends the key in the `x-functions-key` header when calling those routes.
 
 Currently supported endpoints:
 - `POST /api/submit_ticket`
@@ -75,7 +83,7 @@ Currently supported endpoints:
 - `POST /api/register_user`
 - `POST /api/user_login`
 - `POST /api/register_admin`
-- `POST /api/admin_login`
+- `POST /api/login/admin`
 
 Disabled until backend routes exist:
 - `GET /api/admin/overview?range={today|week|month|year}`

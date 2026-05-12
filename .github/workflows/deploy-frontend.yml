@@ -20,19 +20,29 @@ jobs:
           AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
           AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           AZURE_FUNCTION_API_BASE: ${{ secrets.AZURE_FUNCTION_API_BASE }}
+          AZURE_FUNCTION_KEY: ${{ secrets.AZURE_FUNCTION_KEY }}
         run: |
           test -n "$AZURE_WEBAPP_NAME" || (echo "Missing AZURE_WEBAPP_NAME secret" && exit 1)
           test -n "$AZURE_WEBAPP_PUBLISH_PROFILE" || (echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE secret" && exit 1)
           test -n "$AZURE_FUNCTION_API_BASE" || (echo "Missing AZURE_FUNCTION_API_BASE secret" && exit 1)
+          test -n "$AZURE_FUNCTION_KEY" || (echo "Missing AZURE_FUNCTION_KEY secret" && exit 1)
 
       - name: Configure API base
         env:
           AZURE_FUNCTION_API_BASE: ${{ secrets.AZURE_FUNCTION_API_BASE }}
+          AZURE_FUNCTION_KEY: ${{ secrets.AZURE_FUNCTION_KEY }}
         run: |
-          cat > frontend/config.js <<'EOF'
-          window.QUICKAID_API_BASE = "__AZURE_FUNCTION_API_BASE__";
-          EOF
-          sed -i "s|__AZURE_FUNCTION_API_BASE__|$AZURE_FUNCTION_API_BASE|g" frontend/config.js
+          python - <<'PY'
+          import json
+          import os
+
+          api_base = os.environ["AZURE_FUNCTION_API_BASE"]
+          function_key = os.environ["AZURE_FUNCTION_KEY"]
+
+          with open("frontend/config.js", "w", encoding="utf-8") as f:
+              f.write(f"window.QUICKAID_API_BASE = {json.dumps(api_base)};\n")
+              f.write(f"window.QUICKAID_FUNCTION_KEY = {json.dumps(function_key)};\n")
+          PY
 
       - name: Package frontend
         run: |

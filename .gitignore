@@ -1,5 +1,8 @@
 # Azure Functions local settings
 local.settings.json
+backend/AzuriteConfig
+backend/__azurite_db_*.json
+backend/__blobstorage__/
 
 # Python virtual environment
 .venv/
