@@ -16,16 +16,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate deployment secrets
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          AZURE_FUNCTION_API_BASE: ${{ secrets.AZURE_FUNCTION_API_BASE }}
         run: |
-          test -n "${{ secrets.AZURE_WEBAPP_NAME }}" || (echo "Missing AZURE_WEBAPP_NAME secret" && exit 1)
-          test -n "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" || (echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE secret" && exit 1)
-          test -n "${{ secrets.AZURE_FUNCTION_API_BASE }}" || (echo "Missing AZURE_FUNCTION_API_BASE secret" && exit 1)
+          test -n "$AZURE_WEBAPP_NAME" || (echo "Missing AZURE_WEBAPP_NAME secret" && exit 1)
+          test -n "$AZURE_WEBAPP_PUBLISH_PROFILE" || (echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE secret" && exit 1)
+          test -n "$AZURE_FUNCTION_API_BASE" || (echo "Missing AZURE_FUNCTION_API_BASE secret" && exit 1)
 
       - name: Configure API base
+        env:
+          AZURE_FUNCTION_API_BASE: ${{ secrets.AZURE_FUNCTION_API_BASE }}
         run: |
           cat > frontend/config.js <<'EOF'
-          window.QUICKAID_API_BASE = "${{ secrets.AZURE_FUNCTION_API_BASE }}";
+          window.QUICKAID_API_BASE = "__AZURE_FUNCTION_API_BASE__";
           EOF
+          sed -i "s|__AZURE_FUNCTION_API_BASE__|$AZURE_FUNCTION_API_BASE|g" frontend/config.js
 
       - name: Package frontend
         run: |
