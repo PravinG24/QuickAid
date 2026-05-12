@@ -3,8 +3,11 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const accountsStorageKey = "quickaid-accounts-v1";
 const accessRequestsStorageKey = "quickaid-access-requests-v1";
 const SYSTEM_ADMIN_EMAIL = "admin@campus.edu";
-const API_BASE_CONFIGURED = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE");
-const API_BASE = API_BASE_CONFIGURED ? window.QUICKAID_API_BASE : "";
+const DEFAULT_API_BASE = "http://localhost:7071";
+const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
+  ? window.QUICKAID_API_BASE
+  : DEFAULT_API_BASE;
+const API_BASE_CONFIGURED = true;
 
 const authHeading = document.querySelector(".login-page .entra-panel h1");
 if (authHeading) authHeading.textContent = "Welcome back👋";
@@ -83,7 +86,6 @@ function toDashboard(session) {
 }
 
 async function apiPost(path, payload) {
-  if (!API_BASE_CONFIGURED) return null;
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -96,6 +98,26 @@ async function apiPost(path, payload) {
   return data;
 }
 
+async function loginWithBackend(email, password) {
+  // modify from frontend: backend splits user/admin login into separate Azure Functions.
+  try {
+    return await apiPost("/api/user_login", { email, password });
+  } catch (userError) {
+    try {
+      return await apiPost("/api/login/admin", { email, password });
+    } catch {
+      throw userError;
+    }
+  }
+}
+
+async function registerAccountWithBackend({ email, name, password, role }) {
+  // modify from frontend: backend supports user/admin registration, while staff approval is frontend-only for now.
+  if (role === "staff") throw new Error("Staff registration is disabled until backend supports staff accounts.");
+  const path = role === "admin" ? "/api/register_admin" : "/api/register_user";
+  return apiPost(path, { email, name, password });
+}
+
 function sessionFromBackend(data, fallback = {}) {
   return {
     email: normalizeEmail(data?.email || fallback.email),
@@ -105,6 +127,7 @@ function sessionFromBackend(data, fallback = {}) {
   };
 }
 
+/* Extra frontend-only function disabled: access request records have no backend route yet.
 function createAccessRequestFromAccount(account) {
   const normalizedRole = normalizeRole(account?.role);
   const isAdminRequest = normalizedRole === "admin";
@@ -119,7 +142,9 @@ function createAccessRequestFromAccount(account) {
     created_at: new Date().toISOString(),
   };
 }
+*/
 
+/* Extra frontend-only function disabled: local account fallback is disabled in backend-first mode.
 function upsertAccountRecord(payload) {
   const accounts = loadAccounts();
   const email = normalizeEmail(payload.email);
@@ -146,7 +171,9 @@ function upsertAccountRecord(payload) {
   saveAccounts(accounts);
   return next;
 }
+*/
 
+/* Extra frontend-only function disabled: Microsoft Entra demo auth has no backend route yet.
 function handleMicrosoftAuth(roleValue, emailValue = "microsoft.user@campus.edu") {
   const email = normalizeEmail(emailValue);
   const role = resolveRoleFromEmail(email, roleValue);
@@ -159,6 +186,7 @@ function handleMicrosoftAuth(roleValue, emailValue = "microsoft.user@campus.edu"
   saveSession(session);
   toDashboard(session);
 }
+*/
 
 function bindInputShell(inputEl) {
   const shell = inputEl?.closest(".input-shell");
@@ -266,7 +294,7 @@ if (loginForm) {
     const email = username.includes("@") ? username : `${username}@campus.edu`;
 
     try {
-      const backendSession = await apiPost("/api/user_login", { email, password });
+      const backendSession = await loginWithBackend(email, password);
       if (backendSession) {
         const session = sessionFromBackend(backendSession, { email, name: username });
         saveSession(session);
@@ -274,47 +302,24 @@ if (loginForm) {
         return;
       }
 
-      const accounts = loadAccounts();
-      const existing = accounts.find((item) => normalizeEmail(item.email) === normalizeEmail(email));
-      const resolvedRole = existing?.role || resolveRoleFromEmail(email, "user");
-      if (
-        !isAdminEmail(email) &&
-        (resolvedRole === "staff" || resolvedRole === "admin") &&
-        String(existing?.approvalStatus || "pending") !== "approved"
-      ) {
-        const status = String(existing?.approvalStatus || "pending").toLowerCase();
-        setError(
-          "loginUsernameError",
-          status === "rejected"
-            ? "Your access request was rejected. Please contact admin."
-            : "Your account is pending approval. Please wait for admin approval."
-        );
-        return;
-      }
-      const session = {
-        email,
-        role: resolvedRole,
-        name: existing?.name || username || "Portal User",
-        prefs: { notifEmail: true, notifInApp: true },
-      };
-      saveSession(session);
-      toDashboard(session);
+      // Extra frontend-only local account fallback is disabled in backend-first mode.
     } catch (error) {
       setError("loginPasswordError", error.message || "Login failed.");
     }
   });
 
-  loginMicrosoftBtn?.addEventListener("click", () => {
-    handleMicrosoftAuth("user");
-  });
+  // Extra frontend-only Microsoft demo auth is disabled until backend supports Entra ID.
+  // loginMicrosoftBtn?.addEventListener("click", () => {
+  //   handleMicrosoftAuth("user");
+  // });
 
-  // REMOVE_IN_PRODUCTION: Temporary bypass for admin UI testing.
+  // Extra frontend-only admin preview: this does not call backend and is only for viewing admin.html locally.
   loginAdminTestBtn?.addEventListener("click", () => {
     const session = {
       email: "admin@campus.edu",
       role: "admin",
-      name: "Admin Test User",
-      prefs: { notifEmail: true, notifInApp: true },
+      name: "Admin Preview User",
+      prefs: { notifEmail: false, notifInApp: false },
     };
     saveSession(session);
     toDashboard(session);
@@ -366,6 +371,9 @@ if (registerForm) {
     if (!password) {
       setError("registerPasswordError", "Password is required.");
       hasError = true;
+    } else if (password.length < 8) {
+      setError("registerPasswordError", "Password must be at least 8 characters.");
+      hasError = true;
     }
     if (!["user", "staff", "admin"].includes(role)) {
       setError("registerRoleError", "Role is required.");
@@ -375,41 +383,32 @@ if (registerForm) {
 
     let account;
     try {
-      const backendAccount = await apiPost("/api/register_user", { email, name, password, role });
-      account = backendAccount ? { ...backendAccount, password } : null;
+      const backendAccount = await registerAccountWithBackend({ email, name, password, role });
+      account = backendAccount ? { ...backendAccount, role, password } : null;
     } catch (error) {
       setError("registerEmailError", error.message || "Registration failed.");
       return;
     }
 
-    if (!account) {
-      account = upsertAccountRecord({
-        email,
-        name,
-        role,
-        password,
-        approvalStatus: role === "user" ? "approved" : "pending",
-      });
-    }
-
-    if (role === "staff" || role === "admin") {
-      const requests = loadAccessRequests();
-      const exists = requests.some(
-        (item) =>
-          normalizeEmail(item.email) === normalizeEmail(account.email) &&
-          String(item.role || "").toLowerCase() === role &&
-          String(item.status || "").toLowerCase() === "pending"
-      );
-      if (!exists) {
-        requests.unshift(createAccessRequestFromAccount(account));
-        saveAccessRequests(requests);
-      }
-      if (approvalNoteEl) {
-        approvalNoteEl.textContent = "Registration submitted. Please wait for admin approval before login.";
-        approvalNoteEl.classList.remove("hidden");
-      }
+    if (role === "staff") {
+      setError("registerRoleError", "Staff registration is disabled until backend supports staff accounts.");
       return;
     }
+
+    // Extra frontend-only access approval request is disabled until backend has access request routes.
+    /*
+    const requests = loadAccessRequests();
+    const exists = requests.some(
+      (item) =>
+        normalizeEmail(item.email) === normalizeEmail(account.email) &&
+        String(item.role || "").toLowerCase() === role &&
+        String(item.status || "").toLowerCase() === "pending"
+    );
+    if (!exists) {
+      requests.unshift(createAccessRequestFromAccount(account));
+      saveAccessRequests(requests);
+    }
+    */
 
     const session = {
       email: account.email,
@@ -421,7 +420,8 @@ if (registerForm) {
     toDashboard(session);
   });
 
-  registerMicrosoftBtn?.addEventListener("click", () => {
-    handleMicrosoftAuth("user");
-  });
+  // Extra frontend-only Microsoft demo auth is disabled until backend supports Entra ID.
+  // registerMicrosoftBtn?.addEventListener("click", () => {
+  //   handleMicrosoftAuth("user");
+  // });
 }

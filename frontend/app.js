@@ -1,5 +1,8 @@
-const API_BASE_CONFIGURED = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE");
-const API_BASE = API_BASE_CONFIGURED ? window.QUICKAID_API_BASE : "";
+const DEFAULT_API_BASE = "http://localhost:7071";
+const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
+  ? window.QUICKAID_API_BASE
+  : DEFAULT_API_BASE;
+const API_BASE_CONFIGURED = true;
 
 const form = document.getElementById("ticketForm");
 const submitBtn = document.getElementById("submitBtn");
@@ -175,6 +178,7 @@ const statInProgress = document.getElementById("statInProgress");
 const statResolved = document.getElementById("statResolved");
 const statTotal = document.getElementById("statTotal");
 
+// Frontend-only mock tickets are disabled in backend-first mode.
 const mockTickets = [];
 let lastLoadedTickets = [];
 const ticketCacheStorageKey = "quickaid-ticket-cache-v1";
@@ -252,13 +256,52 @@ function statusBadgeClass(status) {
 }
 
 function mapSafeStatus(status) {
-  return allowedStatuses.includes(status) ? status : "New";
+  const normalized = normalizeTicketStatus(status);
+  return allowedStatuses.includes(normalized) ? normalized : "New";
 }
 
 function prettyStatus(status) {
   if (status === "New") return "Open";
   if (status === "InProgress") return "In Progress";
   return status;
+}
+
+// modify from frontend: keep UI status labels compatible with backend's current "Open" value.
+function normalizeTicketStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "open") return "New";
+  if (value === "in progress" || value === "inprogress") return "InProgress";
+  if (value === "resolved") return "Resolved";
+  if (value === "closed") return "Closed";
+  if (allowedStatuses.includes(status)) return status;
+  return "New";
+}
+
+// modify from frontend: backend currently accepts only IT/HR/Finance/Operations/General.
+function toBackendCategory(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized.includes("it") || normalized.includes("network") || normalized.includes("device")) return "IT";
+  if (normalized.includes("hr")) return "HR";
+  if (normalized.includes("finance") || normalized.includes("billing")) return "Finance";
+  if (normalized.includes("facility") || normalized.includes("operation")) return "Operations";
+  return "General";
+}
+
+function ticketMatchesCategoryFilter(ticket, filterValue) {
+  // modify from frontend: backend category values are broader than the UI's assigned-team labels.
+  if (!filterValue || filterValue === "All") return true;
+  const ticketCategory = String(ticket.category || ticket.department || "").trim();
+  return ticketCategory === filterValue || toBackendCategory(ticketCategory) === toBackendCategory(filterValue);
+}
+
+// modify from frontend: submit_ticket requires title/category; UI keeps subject/department for display.
+function toBackendTicketPayload(payload) {
+  return {
+    email: payload.email,
+    title: payload.subject,
+    description: payload.description,
+    category: toBackendCategory(payload.category || payload.department || payload.request_type),
+  };
 }
 
 function validateTicketPayload(payload) {
@@ -361,65 +404,28 @@ function randomTicketId() {
 }
 
 async function submitTicket(payload) {
-  // Real backend mode uses POST /api/submit_ticket; demo mode below keeps static preview usable.
-  if (!API_BASE_CONFIGURED) {
-    await sleep(600);
-    const ticket = {
-      ticket_id: randomTicketId(),
-      status: "New",
-      submitted_at: currentIsoTime(),
-      message: "Ticket submitted successfully (demo mode).",
-      ...payload,
-      created_at: currentIsoTime(),
-      updated_at: currentIsoTime(),
-      department: payload.category || "General Inquiry",
-      assignedTo:
-        payload.assigned_to ||
-        (payload.category === "IT Support" ? "IT Support Team" : "Campus Support Desk"),
-      comments: [
-        {
-          by: payload.name || "Requester",
-          text: "Ticket created by requester. Support will review shortly.",
-          at: currentIsoTime(),
-        },
-      ],
-      timeline: [
-        { label: "Ticket created", at: currentIsoTime() },
-        { label: "Request queued for triage", at: currentIsoTime() },
-      ],
-    };
-    mockTickets.push(ticket);
-    return ticket;
-  }
-
+  // Backend-first mode: POST /api/submit_ticket is the only create path.
   const response = await fetch(`${API_BASE}/api/submit_ticket`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Correlation-Id": crypto.randomUUID(),
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(toBackendTicketPayload(payload)),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    const msg = error?.error_message || "Unable to submit ticket. Please try again.";
+    const msg = error?.error_message || error?.error || "Unable to submit ticket. Please try again.";
     throw new Error(msg);
   }
 
-  return response.json();
+  const result = await response.json();
+  return normalizeTicketRecord({ ...payload, ...result });
 }
 
 async function getTicketsByEmail(email) {
-  // Real backend mode uses GET /api/get_tickets as the source of truth.
-  if (!API_BASE_CONFIGURED) {
-    await sleep(500);
-    const items = mockTickets
-      .filter((t) => t.email?.toLowerCase() === email.toLowerCase())
-      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-    return { tickets: items };
-  }
-
+  // Backend-first mode: GET /api/get_tickets is the only ticket list source.
   const response = await fetch(
     `${API_BASE}/api/get_tickets?email=${encodeURIComponent(email)}`,
     {
@@ -433,7 +439,7 @@ async function getTicketsByEmail(email) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    const msg = error?.error_message || "Unable to retrieve tickets right now.";
+    const msg = error?.error_message || error?.error || "Unable to retrieve tickets right now.";
     throw new Error(msg);
   }
 
@@ -480,7 +486,7 @@ function renderTickets(items) {
       </div>
 
       <div class="ticket-card-subject">
-        <strong>${escapeHtml(t.subject || "No subject")}</strong>
+        <strong>${escapeHtml(t.subject || t.title || "No subject")}</strong>
       </div>
 
       <div class="ticket-card-meta">
@@ -502,13 +508,20 @@ function renderTickets(items) {
 function normalizeTicketRecord(source) {
   const item = source || {};
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
+  const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || currentIsoTime();
+  const updatedAt = item.updated_at || item.updatedAt || item.submitted_at || item.created_at || item.createdAt || currentIsoTime();
   return {
     ...item,
     ticket_id: ticketId,
     ticketId,
-    submitted_at: item.submitted_at || item.created_at || item.updated_at || currentIsoTime(),
-    created_at: item.created_at || item.submitted_at || item.updated_at || currentIsoTime(),
-    updated_at: item.updated_at || item.submitted_at || item.created_at || currentIsoTime(),
+    subject: item.subject || item.title || "No subject",
+    title: item.title || item.subject || "No subject",
+    status: normalizeTicketStatus(item.status),
+    submitted_at: item.submitted_at || createdAt,
+    created_at: createdAt,
+    updated_at: updatedAt,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -540,7 +553,7 @@ function applyStatusFilter() {
     filtered = filtered.filter((ticket) => mapSafeStatus(ticket.status) === activeStatus);
   }
   if (cat && cat !== "All") {
-    filtered = filtered.filter((ticket) => String(ticket.category || "").trim() === cat);
+    filtered = filtered.filter((ticket) => ticketMatchesCategoryFilter(ticket, cat));
   }
   if (pri && pri !== "All") {
     filtered = filtered.filter((ticket) => {
@@ -820,6 +833,11 @@ function updateHeaderAuthUi() {
 // -----------------------------
 // Notifications dropdown wiring
 // -----------------------------
+function closeNotifDropdown() {
+  // Backend-first mode: notification UI is disabled until backend has notification routes.
+}
+
+/* Extra frontend-only function disabled: notifications have no backend route yet.
 const notifStorageKey = "quickaid-notifs-read-v1";
 const defaultNotifications = [
   {
@@ -966,7 +984,9 @@ function wireNotificationsUi() {
 }
 
 wireNotificationsUi();
+*/
 
+/* Extra frontend-only function disabled: profile preferences have no backend route yet.
 function openProfileModal() {
   if (!profileModal) return;
   const session = loadSession();
@@ -976,8 +996,17 @@ function openProfileModal() {
   if (notifInApp) notifInApp.checked = Boolean(prefs.notifInApp);
   openModal(profileModal);
 }
+*/
 
 function validateAttachment() {
+  // Backend-first mode: attachment upload is disabled until backend has file storage.
+  return true;
+}
+
+/* Extra frontend-only function disabled: backend does not persist attachments yet.
+function validateAttachment() {
+  // Extra frontend-only attachment upload is disabled until backend has file storage.
+  if (!attachmentInput || !attachmentInfo) return true;
   setFieldError("attachment", "");
   attachmentInfo.textContent = "";
   if (attachmentPreview) attachmentPreview.classList.add("hidden");
@@ -1023,6 +1052,7 @@ function validateAttachment() {
   }
   return true;
 }
+*/
 
 function replaceSelection(textarea, replacer) {
   if (!textarea) return;
@@ -1366,10 +1396,10 @@ form.addEventListener("submit", async (event) => {
     request_type: sanitize(form.category.value),
     name: sanitize(form.name.value),
     email: sanitize(form.email.value),
-    category: sanitize(form.department.value),
-    department: sanitize(form.department.value),
+    category: sanitize(form.category.value),
+    department: sanitize(form.category.value),
     priority: sanitize(form.priority.value || "Medium"),
-    assigned_to: sanitize(form.department?.value || ""),
+    assigned_to: sanitize(form.category.value),
     subject: sanitize(form.subject.value),
     location: sanitize(form.location.value),
     description: sanitize(form.description.value),
@@ -1402,14 +1432,10 @@ form.addEventListener("submit", async (event) => {
     attachmentInfo.textContent = "";
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    if (API_BASE_CONFIGURED) {
-      const data = await getTicketsByEmail(payload.email);
-      lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
-      persistTicketCache(lastLoadedTickets);
-      applyStatusFilter();
-    } else {
-      showSubmittedTicketTemporarily(result, payload.email);
-    }
+    const data = await getTicketsByEmail(payload.email);
+    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+    persistTicketCache(lastLoadedTickets);
+    applyStatusFilter();
     setTimeout(() => {
       closeCreateFormWrap();
       openTrackPanel();
@@ -1529,11 +1555,13 @@ if (statusTabs?.length) {
 }
 
 if (subjectInput) subjectInput.addEventListener("input", () => {
-  updateKnowledgeSuggestions();
+  // Extra frontend-only knowledge suggestions are disabled until backend has a knowledge-base API.
   saveDraft();
 });
-kbList?.addEventListener("click", handleKbFeedbackVote);
-kbPageList?.addEventListener("click", handleKbFeedbackVote);
+// Extra frontend-only knowledge-base feedback is disabled until backend has KB routes.
+// kbList?.addEventListener("click", handleKbFeedbackVote);
+// kbPageList?.addEventListener("click", handleKbFeedbackVote);
+/* Extra frontend-only function disabled: attachments and rich-text helpers have no backend route yet.
 if (attachmentInput) attachmentInput.addEventListener("change", validateAttachment);
 if (attachmentDropzone && attachmentInput) {
   const trigger = () => attachmentInput.click();
@@ -1571,6 +1599,7 @@ if (emojiPicker) {
     if (!inPicker && !onEmojiBtn) closeEmojiPicker();
   });
 }
+*/
 if (form.priority) {
   form.priority.addEventListener("change", () => {
     slaHint.textContent = getSlaByPriority(form.priority.value);
@@ -1612,27 +1641,29 @@ sidebarDashboardBtn?.addEventListener("click", () => {
   openTrackPanel();
 });
 
-sidebarKnowledgeBtn?.addEventListener("click", () => {
-  setActiveSidebarItem("knowledge");
-  openKnowledgeBasePanel();
-});
+// Extra frontend-only Knowledge Base page is disabled until backend has KB routes.
+// sidebarKnowledgeBtn?.addEventListener("click", () => {
+//   setActiveSidebarItem("knowledge");
+//   openKnowledgeBasePanel();
+// });
 
-btnResetKbFeedback?.addEventListener("click", () => {
-  try {
-    localStorage.removeItem(kbFeedbackStorageKey);
-  } catch {
-    // no-op for storage errors
-  }
-  updateKnowledgeSuggestions();
-  renderKnowledgeBasePage();
-});
+// Extra frontend-only KB feedback reset is disabled until backend has KB routes.
+// btnResetKbFeedback?.addEventListener("click", () => {
+//   try {
+//     localStorage.removeItem(kbFeedbackStorageKey);
+//   } catch {
+//     // no-op for storage errors
+//   }
+//   updateKnowledgeSuggestions();
+//   renderKnowledgeBasePage();
+// });
 
 form.addEventListener("reset", () => {
   setTimeout(() => {
     descCount.textContent = "0";
-    kbList.innerHTML = "";
-    kbSuggestions.querySelector(".kb-empty").style.display = "block";
-    attachmentInfo.textContent = "";
+    if (kbList) kbList.innerHTML = "";
+    kbSuggestions?.querySelector(".kb-empty")?.style.setProperty("display", "block");
+    if (attachmentInfo) attachmentInfo.textContent = "";
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
     slaHint.textContent = getSlaByPriority("Medium");
@@ -1651,15 +1682,18 @@ tabButtons.forEach((button) => {
 });
 
 loadDraft();
-updateKnowledgeSuggestions();
-renderKnowledgeBasePage();
+// Extra frontend-only KB rendering is disabled until backend has KB routes.
+// updateKnowledgeSuggestions();
+// renderKnowledgeBasePage();
 setActiveSidebarItem("dashboard");
 
 // -----------------------------
 // Modal / Profile wiring
 // -----------------------------
 
+/* Extra frontend-only function disabled: profile preferences have no backend route yet.
 btnProfile?.addEventListener("click", openProfileModal);
+*/
 
 btnLogout?.addEventListener("click", () => {
   localStorage.removeItem(sessionKey);
@@ -1677,7 +1711,11 @@ sidebarLogoutBtn?.addEventListener("click", () => {
 function openCreateModal() {
   if (!createFormWrap || !form) return;
 
-  const session = ensureDemoSession();
+  const session = loadSession();
+  if (!session?.email) {
+    window.location.href = "./login.html";
+    return;
+  }
 
   // Ensure modal can render even if submitPanel is hidden.
   if (panels?.submit && panels?.track) {
@@ -1692,8 +1730,8 @@ function openCreateModal() {
 
   if (form.consent) form.consent.checked = true;
 
-  if (form.category && !form.category.value) form.category.value = "Incident";
-  if (form.department && !form.department.value) form.department.value = "IT Support";
+  if (form.category && !form.category.value) form.category.value = "IT";
+  if (form.department && !form.department.value) form.department.value = form.category?.value || "IT";
 
   createFormWrap.classList.remove("hidden");
   createFormWrap.setAttribute("aria-hidden", "false");
@@ -1717,6 +1755,7 @@ function closeCreateFormWrap() {
 btnCloseCreate?.addEventListener("click", closeCreateFormWrap);
 btnCancelCreate?.addEventListener("click", closeCreateFormWrap);
 
+/* Extra frontend-only function disabled: profile preferences have no backend route yet.
 profileForm?.addEventListener("submit", (e) => {
   e.preventDefault();
   const session = loadSession();
@@ -1728,21 +1767,28 @@ profileForm?.addEventListener("submit", (e) => {
   saveSession(session);
   closeModal(profileModal);
 });
+*/
 
 // Close modals on backdrop click.
 document.addEventListener("click", (e) => {
   const target = e.target;
   if (!target) return;
+  /* Extra frontend-only function disabled: profile modal has no backend route yet.
   if (target.dataset?.closeProfile === "true") closeModal(profileModal);
+  */
 });
 
 // Close modals on ESC.
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  /* Extra frontend-only function disabled: profile modal has no backend route yet.
   closeModal(profileModal);
+  */
   if (createFormWrap) closeCreateFormWrap();
   closeNotifDropdown();
+  /* Extra frontend-only function disabled: emoji picker has no backend route yet.
   closeEmojiPicker();
+  */
 });
 
 // SLA countdown auto-refresh for visible ticket rows.
@@ -1770,7 +1816,6 @@ if (!bootSession?.email) {
   window.location.replace("./admin.html");
 }
 if (bootSession?.email) {
-  seedDemoTickets(bootSession.email);
   (async () => {
     try {
       const data = await getTicketsByEmail(bootSession.email);

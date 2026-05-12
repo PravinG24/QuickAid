@@ -1,6 +1,9 @@
 const sessionKey = "quickaid-session-v1";
-const API_BASE_CONFIGURED = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE");
-const API_BASE = API_BASE_CONFIGURED ? window.QUICKAID_API_BASE : "";
+const DEFAULT_API_BASE = "http://localhost:7071";
+const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
+  ? window.QUICKAID_API_BASE
+  : DEFAULT_API_BASE;
+const API_BASE_CONFIGURED = true;
 const accountsStorageKey = "quickaid-accounts-v1";
 const accessRequestsStorageKey = "quickaid-access-requests-v1";
 const SYSTEM_ADMIN_EMAIL = "admin@campus.edu";
@@ -563,6 +566,7 @@ function resolveApiUrl(path) {
 }
 
 async function fetchJsonOrFallback(path, fallbackData) {
+  // Extra frontend-only mock fallback is disabled in backend-first mode.
   // BACKEND NOTE:
   // All admin pages currently run in "API with local fallback" mode.
   // If request fails, UI uses bundled mock payload so frontend flows remain testable.
@@ -573,7 +577,7 @@ async function fetchJsonOrFallback(path, fallbackData) {
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     return await response.json();
   } catch {
-    return fallbackData;
+    return null;
   }
 }
 
@@ -768,7 +772,9 @@ function createSupportTeamRecord(input, existingTeams) {
   };
 }
 
+/* Extra frontend-only function disabled: support team creation has no backend route yet.
 async function persistSupportTeamCreate(team) {
+  // new function from frontend
   // BACKEND NOTE:
   // Expected endpoint: POST /api/admin/support_teams
   // Expected behavior: return created team (id, members, stats, staffMembers) to replace optimistic local record.
@@ -783,6 +789,7 @@ async function persistSupportTeamCreate(team) {
     return false;
   }
 }
+*/
 
 function openAddTeamModal() {
   if (!addTeamModal) return;
@@ -825,7 +832,9 @@ function validateAddTeamForm(teams, payload) {
   return !hasError;
 }
 
+/* Extra frontend-only function disabled: add team flow has no backend route yet.
 async function handleAddSupportTeam(payload) {
+  // new function from frontend
   const currentState = supportTeamsState || mockAdminData.supportTeams;
   const teams = Array.isArray(currentState?.teams) ? currentState.teams : [];
   if (!validateAddTeamForm(teams, payload)) {
@@ -852,6 +861,7 @@ async function handleAddSupportTeam(payload) {
   });
   closeAddTeamModal();
 }
+*/
 
 function clearAddStaffFormError() {
   if (!(addStaffFormError instanceof HTMLElement)) return;
@@ -905,7 +915,9 @@ function createSupportStaffRecord(input) {
   };
 }
 
+/* Extra frontend-only function disabled: support staff creation has no backend route yet.
 async function persistSupportStaffCreate(teamId, staff) {
+  // new function from frontend
   // BACKEND NOTE:
   // Expected endpoint: POST /api/admin/support_teams/:teamId/staff
   // Expected behavior: return created staff member and updated team counters.
@@ -934,8 +946,11 @@ async function persistSupportStaffCreate(teamId, staff) {
     };
   }
 }
+*/
 
+/* Extra frontend-only function disabled: add staff flow has no backend route yet.
 async function handleAddStaffInTeamSubmit() {
+  // new function from frontend
   const currentState = supportTeamsState || mockAdminData.supportTeams;
   const teams = Array.isArray(currentState?.teams) ? currentState.teams : [];
   const teamIndex = teams.findIndex((team) => String(team.id) === String(activeSupportTeamId));
@@ -1214,6 +1229,7 @@ function syncOverviewRowControls(ticket) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
 }
+*/
 
 function buildLineCoordinates(values, height = 180, width = 700, maxValue = 1, startX = 20) {
   const safeValues = Array.isArray(values) && values.length ? values : [0, 0, 0, 0, 0, 0, 0];
@@ -1559,6 +1575,7 @@ function recalculateOverviewMetrics() {
 }
 
 async function persistOverviewTicketUpdate(ticket) {
+  // modify from frontend
   // BACKEND NOTE:
   // Expected endpoints:
   // - PATCH /api/admin/tickets/:id/status      body: { status }
@@ -1583,6 +1600,26 @@ async function persistOverviewTicketUpdate(ticket) {
     return false;
   }
 }
+
+/* Extra frontend-only function disabled: access request approval has no backend route yet.
+async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
+  // new function from frontend
+  // BACKEND NOTE:
+  // Expected endpoint: PATCH /api/admin/access_requests/:requestId
+  // Expected behavior: persist approval/rejection and optionally return updated team/staff payload.
+  if (!API_BASE_CONFIGURED || !requestId) return true;
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/access_requests/${encodeURIComponent(requestId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, reviewedBy }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+*/
 
 function renderTicketDetails(ticket) {
   if (!adminTicketModalContent) return;
@@ -2086,43 +2123,29 @@ async function applyTicketChanges(ticket, nextStatus, nextTeam, triggerButton = 
 }
 
 async function loadAdminData() {
-  // BACKEND NOTE (READ CONTRACT):
-  // Required routes for live mode:
-  // - GET /api/admin/overview?range=<today|week|month|year>
-  // - GET /api/admin/tickets
-  // - GET /api/admin/analytics
-  // - GET /api/admin/support_teams
-  // Any route failure currently falls back to mock payload to keep UI available.
-  const [overviewRes, manageRes, analyticsRes, teamsRes] = await Promise.all([
-    fetchJsonOrFallback(
-      `/api/admin/overview?range=${encodeURIComponent(activeRange)}`,
-      mockAdminData.overview
-    ),
-    fetchJsonOrFallback(
-      `/api/admin/tickets`,
-      mockAdminData.manageTickets
-    ),
-    fetchJsonOrFallback(
-      `/api/admin/analytics`,
-      mockAdminData.analytics
-    ),
-    fetchJsonOrFallback(
-      `/api/admin/support_teams`,
-      mockAdminData.supportTeams
-    ),
-  ]);
-
-  void overviewRes;
-  const overviewTickets = Array.isArray(overviewRes?.tickets) ? overviewRes.tickets : [];
-  const manageTickets = Array.isArray(manageRes?.tickets) ? manageRes.tickets : [];
-  // Prefer full manage list as source of truth. Overview endpoint may already be range-filtered.
-  const sourceTickets = manageTickets.length ? manageTickets : overviewTickets;
-  allTicketsState = sourceTickets.map((ticket) => normalizeAdminTicket(ticket));
-  overviewTicketsState = getOverviewTicketsByRange();
-  renderOverview(computeOverviewDataFromTickets(overviewTicketsState));
-  renderManageTickets(allTicketsState);
-  renderAnalytics(analyticsRes);
-  renderSupportTeams(teamsRes);
+  // Backend-first mode:
+  // Existing backend currently has auth + user ticket routes only. Admin overview,
+  // ticket management, analytics, teams, staff, and access request routes are not
+  // implemented, so mock admin data is intentionally not rendered.
+  allTicketsState = [];
+  overviewTicketsState = [];
+  renderOverview(computeOverviewDataFromTickets([]));
+  renderManageTickets([]);
+  renderAnalytics({
+    summary: { new: 0, complete: 0, staff: 0, users: 0, tickets: 0 },
+    cards: [
+      {
+        title: "Backend endpoints required",
+        copy: "Admin dashboard data is disabled until /api/admin routes are implemented.",
+      },
+    ],
+  });
+  renderSupportTeams({ teams: [], accessRequests: [] });
+  showUpdateToast({
+    title: "Admin backend not connected",
+    detail: "Only login/register and user ticket APIs exist right now.",
+    tone: "warning",
+  });
 }
 
 function activateAdminPage(pageId) {
@@ -2164,7 +2187,7 @@ supportRequestFilter?.addEventListener("change", () => {
 });
 
 const supportAccessBody = document.getElementById("supportAccessBody");
-supportAccessBody?.addEventListener("click", (event) => {
+supportAccessBody?.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLButtonElement)) return;
   const action = String(target.dataset.requestAction || "");
@@ -2291,10 +2314,19 @@ supportAccessBody?.addEventListener("click", (event) => {
   });
   saveLocalAccounts(accounts);
 
+  const persisted = await persistAccessRequestDecision({
+    requestId,
+    status: nextStatus,
+    reviewedBy: reviewer,
+  });
   showUpdateToast({
-    title: nextStatus === "approved" ? "Access approved" : "Access rejected",
+    title: persisted
+      ? nextStatus === "approved"
+        ? "Access approved"
+        : "Access rejected"
+      : "Access updated locally",
     detail: `${requestEmail} (${requestRole})`,
-    tone: nextStatus === "approved" ? "success" : "warning",
+    tone: persisted && nextStatus === "approved" ? "success" : "warning",
   });
   renderSupportTeams(supportTeamsState);
 });

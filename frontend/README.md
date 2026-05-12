@@ -20,7 +20,7 @@ Frontend implementation for:
 - `dashboard.html`: signed-in user ticket workspace and form screens
 - `login.html`: dedicated login page
 - `register.html`: dedicated registration page
-- `styles.css`: responsive styling and states
+- `style.css`: responsive styling and states
 - `app.js`: validation, API calls, submit/track logic
 - `auth.css`: auth page styling
 - `auth.js`: login/register page logic and session persistence
@@ -46,13 +46,14 @@ Route flow:
 - `dashboard.html` user ticket workspace
 - `admin.html` administrator console
 
-By default, app runs in demo mode:
-- submit creates mock ticket in browser memory
-- track reads mock tickets by email
+By default, app runs in backend-first mode against local Azure Functions:
+- `http://localhost:7071`
+- demo/mock ticket creation is disabled
+- frontend-only features without backend routes are commented out or disabled
 
 ## Connect Real Backend
 
-Set global config before `app.js` load:
+Set global config before page scripts to use a deployed backend:
 
 ```html
 <script>
@@ -68,11 +69,15 @@ For same-origin hosting where the frontend and Azure Functions app share one dom
 </script>
 ```
 
-Expected endpoints:
+Currently supported endpoints:
 - `POST /api/submit_ticket`
 - `GET /api/get_tickets?email={email}`
 - `POST /api/register_user`
 - `POST /api/user_login`
+- `POST /api/register_admin`
+- `POST /api/admin_login`
+
+Disabled until backend routes exist:
 - `GET /api/admin/overview?range={today|week|month|year}`
 - `GET /api/admin/tickets`
 - `PATCH /api/admin/tickets/{ticketId}/status`

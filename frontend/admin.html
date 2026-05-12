@@ -50,7 +50,9 @@
       <nav class="admin-nav" aria-label="Admin sections">
         <a href="#overview" class="admin-nav-link active" data-page-link="overview">Overview</a>
         <a href="#manage-tickets" class="admin-nav-link" data-page-link="manage-tickets">Manage Tickets</a>
+        <!-- Extra frontend-only function disabled: support teams have no backend route yet.
         <a href="#support-teams" class="admin-nav-link" data-page-link="support-teams">Support Teams</a>
+        -->
       </nav>
 
     </aside>
@@ -253,6 +255,7 @@
         </article>
       </section>
 
+      <!-- Extra frontend-only function disabled: support teams, staff, and access requests have no backend routes yet.
       <section id="support-teams" class="admin-page" aria-labelledby="teamsTitle">
         <article class="section-block">
           <div class="section-head">
@@ -305,7 +308,9 @@
           </div>
         </article>
       </section>
+      -->
 
+      <!-- Extra frontend-only function disabled: team detail/staff management has no backend route yet.
       <section id="support-team-detail" class="admin-page" aria-labelledby="teamDetailTitle">
         <article class="section-block">
           <div class="section-head">
@@ -334,6 +339,7 @@
 
         </article>
       </section>
+      -->
     </main>
 
     <div id="adminTicketModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTicketModalTitle">
@@ -347,6 +353,7 @@
       </div>
     </div>
 
+    <!-- Extra frontend-only function disabled: bulk ticket edit has no backend route yet.
     <div id="bulkEditDrawer" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulkEditDrawerTitle">
       <div class="admin-modal-backdrop" data-close-bulk-drawer="true"></div>
       <div class="admin-modal-card admin-drawer-card" role="document">
@@ -390,7 +397,9 @@
         </div>
       </div>
     </div>
+    -->
 
+    <!-- Extra frontend-only function disabled: add team has no backend route yet.
     <div id="addTeamModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addTeamModalTitle">
       <div class="admin-modal-backdrop" data-close-add-team-modal="true"></div>
       <div class="admin-modal-card" role="document">
@@ -414,7 +423,7 @@
             <input id="addTeamLeadEmail" class="table-select" type="email" placeholder="lead@campus.edu" />
             <small class="admin-modal-error" id="addTeamLeadEmailError"></small>
           </label>
-          <!-- <p class="sub">Backend note: this form saves locally first for preview, then attempts POST <code>/api/admin/support_teams</code> sync.</p> -->
+          <p class="sub">Backend note: this form saves locally first for preview, then attempts POST /api/admin/support_teams sync.</p>
           <p class="sub">New teams are available immediately and will sync when the service is online.</p>
           <div class="table-actions">
             <button type="button" class="table-btn" data-close-add-team-modal="true">Cancel</button>
@@ -423,7 +432,9 @@
         </form>
       </div>
     </div>
+    -->
 
+    <!-- Extra frontend-only function disabled: add staff has no backend route yet.
     <div id="addStaffModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addStaffModalTitle">
       <div class="admin-modal-backdrop" data-close-add-staff-modal="true"></div>
       <div class="admin-modal-card" role="document">
@@ -433,7 +444,7 @@
         </div>
         <form id="addStaffForm" class="admin-modal-content">
           <p id="addStaffTeamHint" class="sub">Create a new support staff profile.</p>
-         <!--      <p class="sub">Backend note: staff is added locally first, then synced via POST <code>/api/admin/support_teams/:teamId/staff</code>.</p> -->
+          <p class="sub">Backend note: staff is added locally first, then synced via POST /api/admin/support_teams/:teamId/staff.</p>
           <p class="sub">Staff are added to the selected team and included in the active support roster.</p>
           <p id="addStaffFormError" class="admin-form-error hidden" role="alert"></p>
           <label class="admin-modal-field">
@@ -459,6 +470,7 @@
         </form>
       </div>
     </div>
+    -->
 
     <footer class="admin-footer university-footer" aria-label="Admin portal footer">
       <div class="footer-grid">
@@ -485,6 +497,7 @@
       </div>
     </footer>
 
+    <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="./ticket-view-shared.js" defer></script>
     <script src="./admin.js" defer></script>

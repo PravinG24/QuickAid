@@ -9,3 +9,10 @@ __pycache__/
 # Logs and temp files
 *.log
 *.zip
+
+.cursor/
+.agents/
+.agent-tools/
+node_modules/
+.env
+.env.*

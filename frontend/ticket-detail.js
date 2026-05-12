@@ -16,6 +16,16 @@ function prettyStatus(status) {
   return status || "Open";
 }
 
+// modify from frontend: ticket detail can render current backend fields and cached frontend fields.
+function normalizeDetailStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "open") return "New";
+  if (value === "in progress" || value === "inprogress") return "InProgress";
+  if (value === "resolved") return "Resolved";
+  if (value === "closed") return "Closed";
+  return status || "New";
+}
+
 function priorityClass(priority) {
   const fallback = String(priority || "Medium").toLowerCase();
   if (sharedTicketView.priorityClass) return sharedTicketView.priorityClass(priority);
@@ -38,13 +48,20 @@ function loadCachedTickets() {
 function normalizeDetailTicket(source) {
   const item = source || {};
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
+  const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || new Date().toISOString();
+  const updatedAt = item.updated_at || item.updatedAt || item.created_at || item.createdAt || item.submitted_at || new Date().toISOString();
   return {
     ...item,
     ticket_id: ticketId,
     ticketId,
-    created_at: item.created_at || item.submitted_at || item.updated_at || new Date().toISOString(),
-    submitted_at: item.submitted_at || item.created_at || item.updated_at || new Date().toISOString(),
-    updated_at: item.updated_at || item.created_at || item.submitted_at || new Date().toISOString(),
+    subject: item.subject || item.title || "No subject",
+    title: item.title || item.subject || "No subject",
+    status: normalizeDetailStatus(item.status),
+    created_at: createdAt,
+    submitted_at: item.submitted_at || createdAt,
+    updated_at: updatedAt,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -164,6 +181,11 @@ function renderTicket(ticket) {
 }
 
 function bindAddComment() {
+  // Backend-first mode: add-comment UI is disabled until backend has a comment route.
+}
+
+/* Extra frontend-only function disabled: add comment has no backend route yet.
+function bindAddComment() {
   const form = document.getElementById("pageCommentForm");
   const input = document.getElementById("pageNewComment");
   const addButton = document.getElementById("pageAddCommentBtn");
@@ -228,6 +250,7 @@ function bindAddComment() {
     }
   });
 }
+*/
 
 function init() {
   document.getElementById("btnBackToList")?.addEventListener("click", () => {
