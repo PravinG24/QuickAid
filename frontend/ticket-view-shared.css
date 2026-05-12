@@ -1,0 +1,237 @@
+.ticket-shared-muted {
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.detail-block {
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  background: #fff;
+  padding: 0.85rem;
+  margin-top: 0.9rem;
+}
+
+.detail-description {
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.ticket-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+  padding: 0.85rem 1rem;
+}
+
+.ticket-page-head h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-family: "Outfit", sans-serif;
+}
+
+.ticket-page-title-wrap .muted {
+  margin: 0.2rem 0 0;
+}
+
+.ticket-page-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ticket-page-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+}
+
+.ticket-section {
+  margin-top: 0.8rem;
+}
+
+.ticket-section h4 {
+  margin: 0 0 0.4rem;
+}
+
+.ticket-section p {
+  margin: 0;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+}
+
+.info-key {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.info-val {
+  text-align: right;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.detail-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.comment-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.55rem 0 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.comment-list li {
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  background: #fbfdff;
+}
+
+.comment-bubble {
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: #fff;
+  padding: 0.7rem;
+}
+
+.comment-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.comment-body {
+  border: 1px solid #e7edf5;
+  border-radius: 0.75rem;
+  background: #f7faff;
+  padding: 0.6rem 0.65rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
+
+.timeline-list.activity-log .activity-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 0.7rem;
+  position: relative;
+  margin-bottom: 0.8rem;
+}
+
+.timeline-list.activity-log .activity-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 18px;
+  bottom: -14px;
+  width: 2px;
+  background: #d8e2ef;
+}
+
+.timeline-list.activity-log .timeline-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 0.28rem;
+  border-radius: 50%;
+  background: #2f73ea;
+}
+
+.timeline-list.activity-log .activity-item:nth-child(even) .timeline-dot {
+  background: #9333ea;
+}
+
+.timeline-list.activity-log .timeline-body strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.badge-new {
+  border: 1px solid #cde0fc;
+  background: #ebf3ff;
+  color: #1f4f8d;
+}
+
+.badge-inprogress {
+  border: 1px solid #f2d28f;
+  background: #fff6dc;
+  color: #7a5400;
+}
+
+.badge-resolved,
+.badge-closed {
+  border: 1px solid #b8e2c7;
+  background: #f2fbf6;
+  color: #0f6b42;
+}
+
+.detail-priority-pill {
+  display: inline-flex;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.detail-priority-pill.priority-low {
+  background: #f2fbf6;
+  border-color: #b8e2c7;
+  color: #0f6b42;
+}
+
+.detail-priority-pill.priority-medium {
+  background: #fff6dc;
+  border-color: #f2d28f;
+  color: #7a5400;
+}
+
+.detail-priority-pill.priority-high {
+  background: #fff0ef;
+  border-color: #f3b3ad;
+  color: #a21b1b;
+}
+
+@media (max-width: 760px) {
+  .ticket-page-grid {
+    grid-template-columns: 1fr;
+  }
+}

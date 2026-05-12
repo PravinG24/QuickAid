@@ -1,0 +1,40 @@
+name: Deploy Frontend to Azure App Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate deployment secrets
+        run: |
+          test -n "${{ secrets.AZURE_WEBAPP_NAME }}" || (echo "Missing AZURE_WEBAPP_NAME secret" && exit 1)
+          test -n "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" || (echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE secret" && exit 1)
+          test -n "${{ secrets.AZURE_FUNCTION_API_BASE }}" || (echo "Missing AZURE_FUNCTION_API_BASE secret" && exit 1)
+
+      - name: Configure API base
+        run: |
+          cat > frontend/config.js <<'EOF'
+          window.QUICKAID_API_BASE = "${{ secrets.AZURE_FUNCTION_API_BASE }}";
+          EOF
+
+      - name: Package frontend
+        run: |
+          cd frontend
+          zip -r ../frontend.zip .
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./frontend.zip
