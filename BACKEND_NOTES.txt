@@ -1,0 +1,445 @@
+Backend Integration Notes (Create Ticket / My Tickets)
+=====================================================
+
+Purpose
+-------
+This file centralizes all frontend-to-backend integration expectations so backend can quickly align implementation.
+
+
+1) Required API Endpoints
+-------------------------
+1. POST /api/submit_ticket
+   - Used by create ticket form submit.
+   - Frontend sends JSON payload.
+
+2. GET /api/get_tickets?email=<requester_email>
+   - Used by "My Tickets" list retrieval.
+   - Should return requester's tickets.
+
+
+2) Current Submit Payload (Frontend)
+-----------------------------------
+Frontend keeps the rich UI form model locally, but live backend requests are now
+normalized to match the existing `backend/submit_ticket` Azure Function.
+
+Live POST /api/submit_ticket payload:
+- email: string
+- title: string          (mapped from frontend "subject")
+- description: string
+- category: "IT" | "HR" | "Finance" | "Operations" | "General"
+
+Frontend-only UI fields retained for demo/cache/detail screens:
+- request_type: string   (mapped from "Ticket type" field)
+- name: string
+- department: string
+- priority: "High" | "Medium" | "Low" (or future "Urgent")
+- assigned_to: string
+- subject: string        ("Ticket Name")
+- location: string
+- attachments: metadata only
+
+Note:
+- `frontend/app.js` includes `// modify from frontend` markers around the mapping helpers.
+- Backend currently persists only the live payload fields above; priority, requester name,
+  department, assignment, location, and attachment metadata need backend fields if they
+  should persist after refresh.
+
+
+3) Expected Response Shape
+--------------------------
+POST /api/submit_ticket should return a ticket object containing at least:
+- ticket_id or ticketId
+- status
+- submitted_at / created_at / createdAt
+- updated_at / updatedAt
+- subject or title
+- priority
+- category
+- department (recommended)
+- assignedTo or assigned_to
+- description
+
+GET /api/get_tickets should return:
+{
+  "tickets": [ ...ticket objects... ]
+}
+
+
+4) Consistency Requirement
+--------------------------
+After POST succeeds, GET by same requester email should include the newly created ticket quickly.
+Frontend "My Tickets" treats GET as source of truth for persisted data.
+
+
+5) Frontend Runtime Behavior
+----------------------------
+Frontend is now backend-first.
+
+Default local API base:
+- http://localhost:7071
+
+Override option:
+- window.QUICKAID_API_BASE = "https://<your-api-host>"
+
+Ticket creation refreshes from `GET /api/get_tickets` after successful
+`POST /api/submit_ticket`, so persisted backend data is the source of truth.
+
+Local in-memory/demo ticket creation is disabled.
+
+
+6) Optional Improvements for Backend + Frontend Alignment
+--------------------------------------------------------
+- Return a canonical field contract (e.g., category vs department vs assigned_to) to avoid duplicate mapping.
+- Provide stable enum values for status and priority.
+- Include comments/timeline in ticket detail response if available.
+
+
+7) Admin Module (Backend-Ready Contract)
+----------------------------------------
+Admin frontend no longer renders fallback mock data in backend-first mode.
+
+Global config (same pattern as user dashboard):
+- window.QUICKAID_API_BASE = "https://<your-api-host>"
+
+Current admin frontend endpoints (planned):
+1. GET /api/admin/overview?range={today|week|month|year}
+   Expected shape:
+   {
+     "metrics": {
+       "totalTickets": number,
+       "open": number,
+       "inProgress": number,
+       "resolved": number
+     },
+     "categoryDistribution": [
+       { "label": string, "value": number }
+     ],
+     "priorityDistribution": [
+       { "label": "High|Medium|Low", "percent": number, "className": "high|medium|low" }
+     ],
+     "weeklyTrend": {
+       "created": [number, number, number, number, number, number, number],
+       "resolved": [number, number, number, number, number, number, number]
+     },
+     "tickets": [
+       {
+         "ticketId": string,
+         "user": string,
+         "issue": string,
+         "category": string,
+         "priority": "High|Medium|Low",
+         "status": string,
+         "assignedTeam": string
+       }
+     ]
+   }
+
+2. GET /api/admin/tickets
+   Expected shape:
+   {
+     "tickets": [
+       {
+         "ticketId": string,
+         "issue": string,
+         "priority": "High|Medium|Low",
+         "status": string,
+         "assignedTeam": string
+       }
+     ]
+   }
+
+3. GET /api/admin/analytics
+   Expected shape:
+   {
+     "summary": {
+       "new": number,
+       "complete": number,
+      "staff": number,
+       "users": number,
+       "tickets": number
+     },
+     "cards": [
+       { "title": string, "copy": string }
+     ]
+   }
+
+4. GET /api/admin/support_teams
+   Expected shape:
+   {
+     "teams": [
+       {
+         "name": string,
+        "activeStaff": number,
+         "scope": string
+       }
+     ]
+   }
+
+Frontend behavior now:
+- Admin mock data is disabled in backend-first mode.
+- Admin pages render empty/disabled states until backend `/api/admin/*` endpoints exist.
+- Range switch (Today/Week/Month/Year) is shown in Overview only.
+- Range filtering is computed on frontend using each ticket's first-created timestamp (`created_at`, fallback `submitted_at`).
+- Manage Tickets, Analytics, and Support Teams are not range-gated in frontend routing.
+
+
+8) Admin Overview Interactive Table (Current Temporary Behavior)
+----------------------------------------------------------------
+Overview table now intentionally supports interactive controls with temporary frontend-only logic:
+- `Status` is a dropdown (Open / In Progress / Resolved)
+- `Assigned Team` is a dropdown
+- `View` button is clickable (temporary alert preview)
+
+Temporary behavior in code:
+- Updates local in-memory row state only
+- Recalculates overview metrics instantly after status changes
+- Does not persist to backend yet
+
+Code markers for backend handover:
+- `TODO_BACKEND_REAL_DATA` in `frontend/admin.js`
+- `// new function from frontend` marks admin functions that need backend support.
+- `// modify from frontend` marks existing frontend flows adapted for backend contract.
+
+Recommended backend endpoints for this table:
+1. PATCH /api/admin/tickets/{ticketId}/status
+   Request: { "status": "Open|In Progress|Resolved" }
+   Response: updated ticket object
+
+2. PATCH /api/admin/tickets/{ticketId}/assignment
+   Request: { "assignedTeam": "<team_name>" }
+   Response: updated ticket object
+
+3. GET /api/admin/tickets/{ticketId}
+   Used by `View` action for real ticket detail screen/modal.
+
+Admin overview latest behavior update:
+- `View` now opens a real ticket detail modal in frontend (no browser alert).
+- `Status` and `Assigned Team` dropdown values are committed only when admin clicks `Update`.
+- `Update` currently persists to temporary frontend state immediately, then attempts backend PATCH if API is available.
+- Historical mock-only verification data is disabled in backend-first mode. Previous mock spread:
+  - 2 tickets created today
+  - 2 additional tickets earlier this week
+  - 2 additional tickets earlier this month
+  - 1 additional ticket earlier this year
+  - 1 ticket outside current year (to validate year filter exclusion)
+
+Backend team action:
+- Return consistent `ticketId` in admin endpoints so PATCH routes can map rows reliably.
+- Add ticket detail payload enrichment for modal (requester contact, timestamps, notes, SLA fields) when ready.
+
+
+9) Admin Team Management - Add Team UI + Error Handling
+-------------------------------------------------------
+Frontend now uses a proper Add Team modal (not browser prompt):
+- Fields: `team name` (required), `team lead` (optional), `team lead email` (optional)
+- Inline validation errors:
+  - team name required
+  - team name duplicate
+  - email format validation (if provided)
+- Clear user feedback via toast when validation fails or create succeeds/falls back
+
+Temporary data behavior (for testing before backend is ready):
+- New team is inserted into local frontend state first (`TEMP_DATA` marker in `frontend/admin.js`)
+- Then frontend attempts backend POST sync
+- If POST fails, team stays available locally for the current session
+
+Backend endpoint for real create:
+1. POST /api/admin/support_teams
+   Request:
+   {
+     "id": string,
+     "name": string,
+     "badge": string,
+     "badgeClass": string,
+     "members": number,
+     "activeTickets": number,
+     "lead": string,
+     "leadRole": string,
+     "email": string,
+     "phone": string,
+     "permissions": number,
+     "stats": { "active": number, "resolved": number, "avgTime": string, "satisfaction": string },
+     "staffMembers": [ { "name": string, "role": string, "email": string, "phone": string, "activeTickets": number } ]
+   }
+   Response:
+   - 201 with created team object (preferred)
+   - 409 on duplicate name
+   - 400 on validation failures (with field-level error payload when possible)
+
+
+9) Team Management Modal Flows (New)
+------------------------------------
+Frontend now supports modal-based Team and Staff creation with inline validation/error handling.
+
+Implemented frontend calls:
+1. POST /api/admin/support_teams
+   - Used by "Add Team" in Team Management
+
+2. POST /api/admin/support_teams/{teamId}/staff
+   - Used by "Add Staff" from Team Details page
+   - Triggered from a form modal (no browser prompt now)
+
+Temporary frontend behavior (for smooth demo/testing):
+- If POST fails or backend is unavailable, new team/staff is still inserted into in-memory state
+- UI immediately updates cards/counters and shows warning toast ("added locally")
+- This keeps UI testable while backend endpoints are in progress
+
+Temporary request payload examples:
+
+POST /api/admin/support_teams
+{
+  "id": "customer-success",
+  "name": "Customer Success",
+  "badge": "C",
+  "badgeClass": "blue",
+  "members": 1,
+  "activeTickets": 0,
+  "lead": "Emma Davis",
+  "leadRole": "Support Staff",
+  "email": "emma.davis@company.com",
+  "phone": "+1 (555) 000-0000",
+  "permissions": 1,
+  "stats": { "active": 0, "resolved": 0, "avgTime": "N/A", "satisfaction": "N/A" },
+  "staffMembers": [
+    {
+      "name": "Emma Davis",
+      "role": "Support Staff",
+      "email": "emma.davis@company.com",
+      "phone": "+1 (555) 000-0000",
+      "activeTickets": 0
+    }
+  ]
+}
+
+POST /api/admin/support_teams/{teamId}/staff
+{
+  "name": "Noah King",
+  "role": "Support Staff",
+  "email": "noah.king@company.com",
+  "phone": "+1 (555) 000-0000",
+  "activeTickets": 0
+}
+
+Recommended backend response for both endpoints:
+{
+  "ok": true,
+  "message": "Created",
+  "data": { ...created entity... }
+}
+
+Error shape expected by frontend (for user-friendly inline message):
+{
+  "ok": false,
+  "message": "Validation failed: email already in use"
+}
+
+10) Temporary Permission QA Data + Approval Logic Contract
+---------------------------------------------------------
+Frontend now includes explicit permission test seeds in `frontend/admin.js` under:
+- `TEMP_DATA_PERMISSION_QA`
+
+Seed characteristics:
+- Mix of `pending`, `approved`, and `rejected`
+- Mix of `Staff` and `Admin` role requests
+- Requests mapped to existing university team IDs:
+  - `technical` (IT Services)
+  - `billing` (Finance Office)
+  - `premium` (Academic Affairs)
+  - `sales` (Student Affairs)
+
+Current frontend approval behavior (local-first preview):
+1. Admin clicks Approve/Reject in Permissions tab.
+2. Matching access request status is updated:
+   - `pending -> approved` OR `pending -> rejected`
+3. Matching account in local account store is updated:
+   - `approvalStatus = approved|rejected`
+4. On Approve:
+   - requester is inserted into target team's `staffMembers` if not already present
+   - target team's `members` count is recalculated from `staffMembers.length`
+   - requester becomes visible in Group Details cards
+
+Backend-ready endpoint recommendation for real persistence:
+1. PATCH /api/admin/access_requests/{requestId}
+   Request:
+   {
+     "status": "approved|rejected",
+     "reviewedBy": "admin@campus.edu"
+   }
+   Response:
+   {
+     "ok": true,
+     "data": {
+       "id": "AR-001",
+       "status": "approved",
+       "reviewedBy": "admin@campus.edu",
+       "teamId": "technical",
+       "email": "emily.chen@campus.edu",
+       "role": "Staff"
+     }
+   }
+
+2. (Optional server-managed side-effect)
+   Backend may automatically append approved requester into team staff list and return updated team payload:
+   - `staffMembers`
+   - `members`
+
+Notes for consistency:
+- Treat request identity as `id` primary key.
+- Keep `teamId` stable so frontend can update correct group details.
+- Return role values consistently (`Staff` / `Admin`) to avoid mapping drift.
+
+
+12) Backend-First Frontend Redesign (Current)
+---------------------------------------------
+Frontend-only functions commented out/disabled until backend routes exist:
+- Microsoft Entra demo sign-in/register buttons
+- Admin test bypass button
+- Staff registration role
+- Knowledge Base page and article feedback
+- Notification dropdown data
+- Profile notification preferences
+- Attachment upload UI
+- Admin Support Teams, Team Detail, Add Team, Add Staff
+- Admin bulk ticket edit
+- Admin mock data fallback
+
+Working backend-supported frontend paths:
+- POST /api/register_user
+- POST /api/register_admin
+- POST /api/user_login
+- POST /api/admin_login
+- POST /api/submit_ticket
+- GET /api/get_tickets?email=<requester_email>
+
+Default frontend API base is now `http://localhost:7071` for local Azure Functions.
+
+
+11) Auth Integration Alignment (Latest Frontend Change)
+-------------------------------------------------------
+Existing backend auth endpoints:
+1. POST /api/register_user
+   Request: { "name": string, "email": string, "password": string }
+   Response: { "userId": string, "name": string, "email": string, "role": "user" }
+
+2. POST /api/user_login
+   Request: { "email": string, "password": string }
+   Response: { "userId": string, "name": string, "email": string, "role": "user" }
+
+3. POST /api/register_admin
+   Request: { "name": string, "email": string, "password": string }
+   Response: { "adminId": string, "name": string, "email": string, "role": "admin" }
+
+4. POST /api/admin_login
+   Request: { "email": string, "password": string }
+   Response: { "adminId": string, "name": string, "email": string, "role": "admin" }
+
+Frontend changes:
+- Login now tries `/api/user_login`, then `/api/admin_login`.
+- Registration uses `/api/register_user` for users and `/api/register_admin` for admins.
+- Staff registration remains frontend-only pending approval because backend has no staff account endpoint yet.
+
+Backend gap from frontend:
+- Add staff account persistence and approval workflow, or confirm staff should be stored as users with a role field.
+- If backend accepts staff/admin approval requests later, expose an endpoint such as:
+  POST /api/admin/access_requests
+  PATCH /api/admin/access_requests/{requestId}
