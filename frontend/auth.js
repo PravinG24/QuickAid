@@ -263,7 +263,6 @@ if (loginForm) {
   const usernameEl = document.getElementById("loginUsername");
   const passwordEl = document.getElementById("loginPassword");
   const loginMicrosoftBtn = document.getElementById("loginMicrosoftBtn");
-  const loginAdminTestBtn = document.getElementById("loginAdminTestBtn");
   bindInputShell(usernameEl);
   bindInputShell(passwordEl);
   initCuteBear({
@@ -312,18 +311,6 @@ if (loginForm) {
   // loginMicrosoftBtn?.addEventListener("click", () => {
   //   handleMicrosoftAuth("user");
   // });
-
-  // Extra frontend-only admin preview: this does not call backend and is only for viewing admin.html locally.
-  loginAdminTestBtn?.addEventListener("click", () => {
-    const session = {
-      email: "admin@campus.edu",
-      role: "admin",
-      name: "Admin Preview User",
-      prefs: { notifEmail: false, notifInApp: false },
-    };
-    saveSession(session);
-    toDashboard(session);
-  });
 }
 
 const registerForm = document.getElementById("registerPageForm");

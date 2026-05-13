@@ -565,15 +565,17 @@ function resolveApiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+function apiHeaders(extra = {}) {
+  const headers = { ...extra };
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) headers["x-functions-key"] = functionKey;
+  return headers;
+}
+
 async function fetchJsonOrFallback(path, fallbackData) {
-  // Extra frontend-only mock fallback is disabled in backend-first mode.
-  // BACKEND NOTE:
-  // All admin pages currently run in "API with local fallback" mode.
-  // If request fails, UI uses bundled mock payload so frontend flows remain testable.
-  // Remove fallback return once backend coverage/reliability is complete for all routes.
   const url = resolveApiUrl(path);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: apiHeaders({ Accept: "application/json" }) });
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     return await response.json();
   } catch {
@@ -1574,24 +1576,26 @@ function recalculateOverviewMetrics() {
   renderOverview(computeOverviewDataFromTickets(overviewTicketsState));
 }
 
+async function refreshOverviewForActiveRange() {
+  const overviewData = await fetchJsonOrFallback(`/api/admin/overview?range=${encodeURIComponent(activeRange)}`, null);
+  if (overviewData) {
+    renderOverview(overviewData);
+    return;
+  }
+  recalculateOverviewMetrics();
+}
+
 async function persistOverviewTicketUpdate(ticket) {
-  // modify from frontend
-  // BACKEND NOTE:
-  // Expected endpoints:
-  // - PATCH /api/admin/tickets/:id/status      body: { status }
-  // - PATCH /api/admin/tickets/:id/assignment  body: { assignedTeam }
-  // Both should return updated ticket payload for strict client/server consistency.
-  if (!API_BASE_CONFIGURED) return true;
   try {
     const [statusRes, teamRes] = await Promise.all([
       fetch(`${API_BASE}/api/admin/tickets/${encodeURIComponent(ticket.ticketId)}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: apiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ status: ticket.status }),
       }),
       fetch(`${API_BASE}/api/admin/tickets/${encodeURIComponent(ticket.ticketId)}/assignment`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: apiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ assignedTeam: ticket.assignedTeam }),
       }),
     ]);
@@ -1831,19 +1835,25 @@ function normalizeAdminTicket(ticket) {
   const rawStatus = String(source.status || "Open");
   const normalizedStatus =
     rawStatus === "New" ? "Open" : rawStatus === "InProgress" ? "In Progress" : rawStatus;
+  const createdAt = source.created_at || source.createdAt || source.submitted_at || source.updated_at || source.updatedAt || new Date().toISOString();
+  const updatedAt = source.updated_at || source.updatedAt || createdAt;
+  const email = source.email || "";
   return {
     ticketId: source.ticketId || source.ticket_id || source.id || "N/A",
-    user: source.user || source.name || source.requester || "N/A",
-    issue: source.issue || source.subject || "No issue provided",
+    user: source.user || source.name || source.requester || source.requesterName || String(email).split("@")[0] || "N/A",
+    email,
+    issue: source.issue || source.subject || source.title || "No issue provided",
+    title: source.title || source.subject || source.issue || "No issue provided",
+    description: source.description || source.issue || source.subject || source.title || "No description provided",
     category: source.category || source.department || "General",
     priority: source.priority || "Medium",
     status: normalizedStatus || "Open",
     assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || "Unassigned",
     comments: Array.isArray(source.comments) ? source.comments : [],
     timeline: Array.isArray(source.timeline) ? source.timeline : [],
-    created_at: source.created_at || source.submitted_at || source.updated_at || new Date().toISOString(),
-    submitted_at: source.submitted_at || source.created_at || source.updated_at || new Date().toISOString(),
-    updated_at: source.updated_at || source.updatedAt || source.created_at || new Date().toISOString(),
+    created_at: createdAt,
+    submitted_at: source.submitted_at || createdAt,
+    updated_at: updatedAt,
   };
 }
 
@@ -2123,29 +2133,44 @@ async function applyTicketChanges(ticket, nextStatus, nextTeam, triggerButton = 
 }
 
 async function loadAdminData() {
-  // Backend-first mode:
-  // Existing backend currently has auth + user ticket routes only. Admin overview,
-  // ticket management, analytics, teams, staff, and access request routes are not
-  // implemented, so mock admin data is intentionally not rendered.
-  allTicketsState = [];
-  overviewTicketsState = [];
-  renderOverview(computeOverviewDataFromTickets([]));
-  renderManageTickets([]);
+  const [ticketsData, overviewData] = await Promise.all([
+    fetchJsonOrFallback("/api/admin/tickets", null),
+    fetchJsonOrFallback(`/api/admin/overview?range=${encodeURIComponent(activeRange)}`, null),
+  ]);
+  const tickets = Array.isArray(ticketsData?.tickets)
+    ? ticketsData.tickets.map(normalizeAdminTicket)
+    : Array.isArray(overviewData?.tickets)
+      ? overviewData.tickets.map(normalizeAdminTicket)
+      : [];
+  allTicketsState = tickets;
+  overviewTicketsState = getOverviewTicketsByRange();
+  renderOverview(overviewData || computeOverviewDataFromTickets(overviewTicketsState));
+  renderManageTickets(allTicketsState);
+  const openCount = allTicketsState.filter((ticket) => ticket.status === "Open").length;
+  const resolvedCount = allTicketsState.filter((ticket) => ticket.status === "Resolved").length;
   renderAnalytics({
-    summary: { new: 0, complete: 0, staff: 0, users: 0, tickets: 0 },
+    summary: {
+      new: openCount,
+      complete: resolvedCount,
+      staff: 0,
+      users: 0,
+      tickets: allTicketsState.length,
+    },
     cards: [
       {
-        title: "Backend endpoints required",
-        copy: "Admin dashboard data is disabled until /api/admin routes are implemented.",
+        title: "Live ticket data",
+        copy: `${allTicketsState.length} ticket(s) loaded from the backend admin API.`,
       },
     ],
   });
   renderSupportTeams({ teams: [], accessRequests: [] });
-  showUpdateToast({
-    title: "Admin backend not connected",
-    detail: "Only login/register and user ticket APIs exist right now.",
-    tone: "warning",
-  });
+  if (!ticketsData && !overviewData) {
+    showUpdateToast({
+      title: "Admin API unavailable",
+      detail: "Could not load /api/admin data from the backend.",
+      tone: "warning",
+    });
+  }
 }
 
 function activateAdminPage(pageId) {
@@ -2411,7 +2436,7 @@ rangeButtons.forEach((button) => {
     rangeButtons.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.range === selectedRange);
     });
-    recalculateOverviewMetrics();
+    refreshOverviewForActiveRange();
   });
 });
 

@@ -48,13 +48,9 @@
         <button type="button" id="sidebarDashboardBtn" class="sidebar-item sidebar-item-active" data-active="true">
           Dashboard 
         </button>
-<<<<<<< HEAD
-        <button type="button" id="sidebarKnowledgeBtn" class="sidebar-item">Knowledge Base</button>
-=======
         <!-- Extra frontend-only function disabled: Knowledge Base has no backend route yet.
         <button type="button" id="sidebarKnowledgeBtn" class="sidebar-item">Knowledge Base</button>
         -->
->>>>>>> 088a91d (Initial local save before pull)
       </nav>
     </aside>
     <button
@@ -77,10 +73,7 @@
         <div class="brand-row">
           <h1>QuickAid</h1>
           <div class="header-actions">
-<<<<<<< HEAD
-=======
             <!-- Extra frontend-only function disabled: notifications have no backend route yet.
->>>>>>> 088a91d (Initial local save before pull)
             <div class="notif-wrap">
               <button
                 type="button"
@@ -124,10 +117,7 @@
                 </div>
               </div>
             </div>
-<<<<<<< HEAD
-=======
             -->
->>>>>>> 088a91d (Initial local save before pull)
             <a class="ghost-action auth-link icon-login" id="btnSignIn" href="./login.html" aria-label="Login">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor" />
@@ -211,10 +201,7 @@
           </p>
         </div>
 
-<<<<<<< HEAD
-=======
         <!-- Extra frontend-only function disabled: templates are not backed by backend data.
->>>>>>> 088a91d (Initial local save before pull)
         <div class="helper-card" aria-label="Issue templates">
           <p class="helper-title">Quick templates</p>
           <div class="template-row">
@@ -223,19 +210,12 @@
             <button class="chip" type="button" data-template="portal">Portal login issue</button>
           </div>
         </div>
-<<<<<<< HEAD
-=======
         -->
->>>>>>> 088a91d (Initial local save before pull)
 
         <div class="submit-callout" id="submitCallout">
           <h3 class="callout-title">Create a new ticket</h3>
           <p class="muted">
-<<<<<<< HEAD
             Use the form below. It auto-saves while you type, and supports attachments.
-=======
-            Create a backend-ready ticket with category, title, and description.
->>>>>>> 088a91d (Initial local save before pull)
           </p>
           <button type="button" class="primary-full" id="btnNewTicket">New Ticket</button>
         </div>
@@ -248,15 +228,6 @@
             </div>
             <div class="form-grid">
             <label class="field">
-<<<<<<< HEAD
-              <span>Ticket type <strong>*</strong></span>
-              <select id="category" name="category" autocomplete="off" required>
-                <option value="">Ticket Type</option>
-                <option value="Incident">Incident (something is broken)</option>
-                <option value="ServiceRequest">Service Request (need access/setup)</option>
-                <option value="Inquiry">General inquiry</option>
-                <option value="Software">Software</option>
-=======
               <span>Category <strong>*</strong></span>
               <select id="category" name="category" autocomplete="off" required>
                 <option value="">Select category</option>
@@ -265,7 +236,6 @@
                 <option value="Finance">Finance</option>
                 <option value="Operations">Operations</option>
                 <option value="General">General</option>
->>>>>>> 088a91d (Initial local save before pull)
               </select>
               <small class="error" id="categoryError"></small>
             </label>
@@ -301,18 +271,6 @@
               <small class="error" id="emailError"></small>
             </label>
 
-<<<<<<< HEAD
-            <label class="field">
-              <span>Assigned team <strong>*</strong></span>
-              <select id="department" name="department" autocomplete="off" required>
-                <option value="">Select assigned team</option>
-                <option value="IT Support">IT Support</option>
-                <option value="Facilities">Facilities</option>
-                <option value="Academic Admin">Academic Admin</option>
-                <option value="Security">Security</option>
-                <option value="HR">HR</option>
-                <option value="General Inquiry">General Inquiry</option>
-=======
             <label class="field hidden">
               <span>Assigned team <strong>*</strong></span>
               <select id="department" name="department" autocomplete="off" required>
@@ -322,16 +280,11 @@
                 <option value="Operations">Operations</option>
                 <option value="HR">HR</option>
                 <option value="General">General</option>
->>>>>>> 088a91d (Initial local save before pull)
               </select>
               <small class="error" id="departmentError"></small>
             </label>
 
-<<<<<<< HEAD
-            <label class="field">
-=======
             <label class="field hidden">
->>>>>>> 088a91d (Initial local save before pull)
               <span>Priority</span>
               <select id="priority" name="priority" class="priority-select">
                 <option value="High">High</option>
@@ -343,19 +296,12 @@
                 <button type="button" class="seg-btn" data-priority="Medium" aria-pressed="true">Medium</button>
                 <button type="button" class="seg-btn" data-priority="Low" aria-pressed="false">Low</button>
               </div>
-<<<<<<< HEAD
               <small class="helper">Higher priority gets faster first response.</small>
+              <!-- Frontend-only until backend supports ticket priority. -->
             </label>
 
             <label class="field field-wide">
               <span>Subject <strong>*</strong></span>
-=======
-              <small class="helper">Frontend-only until backend supports ticket priority.</small>
-            </label>
-
-            <label class="field field-wide">
-              <span>Title <strong>*</strong></span>
->>>>>>> 088a91d (Initial local save before pull)
               <input
                 id="subject"
                 name="subject"
@@ -365,27 +311,17 @@
                 autocomplete="off"
                 placeholder="Briefly describe the issue"
               />
-<<<<<<< HEAD
               <small class="helper">Keep it short and specific so support can triage quickly.</small>
               <small class="error" id="subjectError"></small>
             </label>
 
-=======
-              <small class="helper">This is sent to backend as <code>title</code>.</small>
-              <small class="error" id="subjectError"></small>
-            </label>
-
             <!-- Extra frontend-only function disabled: Knowledge Base suggestions have no backend route yet.
->>>>>>> 088a91d (Initial local save before pull)
             <div class="kb-suggestions field-wide hidden" id="kbSuggestions" aria-live="polite">
               <p class="helper-title">Suggested help articles</p>
               <p class="kb-empty">Start typing your subject to see relevant self-help guides.</p>
               <ul id="kbList"></ul>
             </div>
-<<<<<<< HEAD
-=======
             -->
->>>>>>> 088a91d (Initial local save before pull)
 
             <label class="field field-wide hidden">
               <span>Location</span>
@@ -400,11 +336,7 @@
             </label>
 
             <label class="field field-wide">
-<<<<<<< HEAD
-              <span>Message <strong>*</strong></span>
-=======
               <span>Description <strong>*</strong></span>
->>>>>>> 088a91d (Initial local save before pull)
               <div class="message-from">
                 <span class="from-label">from</span>
                 <span class="from-chip"><span class="from-avatar">👨🏻</span><span id="messageFromName">Portal User</span></span>
@@ -418,7 +350,7 @@
                 autocomplete="off"
                 placeholder="Describe what happened, where it happened, and any error messages."
               ></textarea>
-              <div class="message-toolbar desktop-only" aria-hidden="true">
+              <div class="message-toolbar desktop-only" aria-label="Description formatting toolbar">
                 <button type="button" class="tool-btn" data-format="bold" aria-label="Bold">B</button>
                 <button type="button" class="tool-btn" data-format="italic" aria-label="Italic">I</button>
                 <button type="button" class="tool-btn" data-format="strike" aria-label="Strikethrough">S</button>
@@ -438,12 +370,8 @@
               <small class="error" id="descriptionError"></small>
             </label>
 
-<<<<<<< HEAD
-            <label class="field field-wide mobile-only attachment-field">
-=======
             <!-- Extra frontend-only function disabled: backend does not persist attachments yet.
             <label class="field field-wide mobile-only attachment-field hidden">
->>>>>>> 088a91d (Initial local save before pull)
               <span>Attach images (Optional)</span>
               <div class="attachment-dropzone" id="attachmentDropzone" role="button" tabindex="0" aria-label="Upload attachment">
                 <div class="dropzone-icon" aria-hidden="true">
@@ -462,10 +390,7 @@
               <small class="helper" id="attachmentInfo"></small>
               <div class="attachment-preview hidden" id="attachmentPreview" aria-live="polite"></div>
             </label>
-<<<<<<< HEAD
-=======
             -->
->>>>>>> 088a91d (Initial local save before pull)
 
             <label class="field field-wide checkbox-field hidden">
               <span class="checkbox-row">
@@ -489,8 +414,6 @@
             </button>
           </div>
           </form>
-
-          <div class="result hidden" id="submitResult" aria-live="polite"></div>
         </div>
       </section>
 
@@ -500,11 +423,7 @@
             <h2 id="trackPanelTitle">My Tickets</h2>
             <button type="button" class="new-ticket-top" id="btnNewTicketTop">+ New Ticket</button>
           </div>
-<<<<<<< HEAD
           <p>Review status, assigned team, priority, and recent updates for your requests.</p>
-=======
-          <p>Review backend ticket status, category, and recent updates for your requests.</p>
->>>>>>> 088a91d (Initial local save before pull)
         </div>
 
         <div class="track-workspace">
@@ -537,19 +456,11 @@
           />
           <select id="categoryFilter" name="categoryFilter" autocomplete="off" aria-label="Category filter">
             <option value="All">All Categories</option>
-<<<<<<< HEAD
-            <option value="IT Support">IT Support</option>
-            <option value="Facilities">Facilities</option>
-            <option value="Academic Admin">Academic Admin</option>
-            <option value="Security">Security</option>
-            <option value="General Inquiry">General Inquiry</option>
-=======
             <option value="IT">IT</option>
             <option value="HR">HR</option>
             <option value="Finance">Finance</option>
             <option value="Operations">Operations</option>
             <option value="General">General</option>
->>>>>>> 088a91d (Initial local save before pull)
           </select>
           <select id="priorityFilter" name="priorityFilter" autocomplete="off" aria-label="Priority filter">
             <option value="All">All Priorities</option>
@@ -597,17 +508,10 @@
               </div>
               <div class="ticket-inline-meta">
                 <span class="badge" id="inlineDetailStatus">Open</span>
-<<<<<<< HEAD
-                <span class="detail-priority-pill" id="inlineDetailPriority">Medium</span>
-              </div>
-              <p class="muted" id="inlineDetailCategory">Department</p>
-              <p class="muted" id="inlineDetailLocation">Location</p>
-=======
                 <span class="detail-priority-pill hidden" id="inlineDetailPriority">Medium</span>
               </div>
               <p class="muted" id="inlineDetailCategory">Category</p>
               <p class="muted hidden" id="inlineDetailLocation">Location</p>
->>>>>>> 088a91d (Initial local save before pull)
               <p class="muted" id="inlineDetailUpdated">Updated</p>
               <div class="detail-block">
                 <h4>Issue description</h4>
@@ -621,10 +525,7 @@
         </div>
       </section>
 
-<<<<<<< HEAD
-=======
       <!-- Extra frontend-only function disabled: Knowledge Base has no backend route yet.
->>>>>>> 088a91d (Initial local save before pull)
       <section class="panel" id="knowledgeBasePanel" aria-labelledby="knowledgeBasePanelTitle">
         <div class="panel-head">
           <div class="panel-head-row">
@@ -638,11 +539,9 @@
           <ul id="kbPageList"></ul>
         </div>
       </section>
-<<<<<<< HEAD
-=======
       -->
->>>>>>> 088a91d (Initial local save before pull)
     </main>
+    <div class="result hidden" id="submitResult" aria-live="polite"></div>
 
     <footer class="app-footer university-footer" aria-label="University helpdesk footer">
       <div class="footer-grid">
@@ -669,10 +568,7 @@
       </div>
     </footer>
 
-<<<<<<< HEAD
-=======
     <!-- Extra frontend-only function disabled: profile preferences have no backend route yet.
->>>>>>> 088a91d (Initial local save before pull)
     <div class="modal hidden" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
       <div class="modal-backdrop" data-close-profile="true"></div>
       <div class="modal-card" role="document">
@@ -700,13 +596,9 @@
         </form>
       </div>
     </div>
-<<<<<<< HEAD
-
-=======
     -->
 
     <script src="./config.js"></script>
->>>>>>> 088a91d (Initial local save before pull)
     <script src="./app.js" defer></script>
   </body>
 </html>

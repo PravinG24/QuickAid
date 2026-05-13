@@ -7,6 +7,27 @@ function quickAidEscapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function quickAidRenderInlineFormatting(value) {
+  return quickAidEscapeHtml(value)
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+}
+
+function quickAidRenderDescriptionFormatting(value) {
+  const text = String(value || "No additional description provided.");
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const bullet = line.match(/^\s*-\s+(.+)$/);
+      if (bullet) return `<span class="description-line description-bullet">&bull; ${quickAidRenderInlineFormatting(bullet[1])}</span>`;
+      if (!line.trim()) return '<span class="description-line description-empty">&nbsp;</span>';
+      return `<span class="description-line">${quickAidRenderInlineFormatting(line)}</span>`;
+    })
+    .join("");
+}
+
 function quickAidFormatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "N/A";
@@ -92,7 +113,7 @@ function quickAidRenderTicketDetailLayout(ticket, options = {}) {
         </div>
         <div class="ticket-section">
           <h4>Description</h4>
-          <p class="detail-description muted">${quickAidEscapeHtml(
+          <p class="detail-description muted">${quickAidRenderDescriptionFormatting(
             safeTicket.description || safeTicket.issue || "No additional description provided."
           )}</p>
         </div>
@@ -143,6 +164,7 @@ window.QuickAidTicketView = {
   formatDateTime: quickAidFormatDateTime,
   priorityClass: quickAidPriorityClass,
   badgeClass: quickAidBadgeClass,
+  renderDescriptionFormatting: quickAidRenderDescriptionFormatting,
   renderComments: quickAidRenderComments,
   renderTimeline: quickAidRenderTimeline,
   renderTicketDetailLayout: quickAidRenderTicketDetailLayout,

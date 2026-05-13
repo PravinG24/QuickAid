@@ -5,6 +5,31 @@ const sharedTicketView = window.QuickAidTicketView || {};
 const escapeHtml = sharedTicketView.escapeHtml || ((value) => String(value || ""));
 const formatDateTime = sharedTicketView.formatDateTime || ((value) => String(value || "-"));
 
+function renderInlineFormatting(value) {
+  return escapeHtml(value)
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+}
+
+function renderDescriptionFormatting(value) {
+  if (typeof sharedTicketView.renderDescriptionFormatting === "function") {
+    return sharedTicketView.renderDescriptionFormatting(value);
+  }
+
+  const text = String(value || "No additional description provided.");
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const bullet = line.match(/^\s*-\s+(.+)$/);
+      if (bullet) return `<span class="description-line description-bullet">&bull; ${renderInlineFormatting(bullet[1])}</span>`;
+      if (!line.trim()) return '<span class="description-line description-empty">&nbsp;</span>';
+      return `<span class="description-line">${renderInlineFormatting(line)}</span>`;
+    })
+    .join("");
+}
+
 function statusBadgeClass(status) {
   if (!status) return "badge-new";
   return `badge-${String(status).toLowerCase()}`;
@@ -123,7 +148,7 @@ function renderTicket(ticket) {
   priorityBadge.className = `detail-priority-pill ${priorityClass(priority)}`;
   priorityBadge.textContent = priority;
   subject.textContent = safeSubject;
-  description.textContent = ticket.description || "No additional description provided.";
+  description.innerHTML = renderDescriptionFormatting(ticket.description);
   submittedBy.textContent = ticket.name || "Requester";
   department.textContent = ticket.department || ticket.category || "General Inquiry";
   assignedTo.textContent = ticket.assignedTo || ticket.assigned_to || "Unassigned";

@@ -3,227 +3,259 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QuickAid - Campus Service Desk</title>
+    <meta name="description" content="QuickAid - Modern campus service desk platform for request management and support operations." />
+    <title>QuickAid - Campus Service Desk Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="./home.css" />
   </head>
   <body class="home-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
+    
     <header class="home-header">
       <a class="home-brand" href="./index.html" aria-label="QuickAid home">
         <span class="home-logo" aria-hidden="true">Q</span>
-        <span>
+        <div class="brand-text">
           <strong>QuickAid</strong>
-          <small>Campus Service Desk</small>
-        </span>
+          <small>Service Desk</small>
+        </div>
       </a>
       <nav class="home-nav" aria-label="Primary navigation">
-        <a href="#workflow">Workflow</a>
         <a href="#features">Features</a>
-        <a href="#operations">Operations</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#benefits">Benefits</a>
       </nav>
       <div class="home-actions">
         <a class="home-link" href="./login.html">Sign in</a>
-        <a class="home-button" href="./register.html">Create account</a>
+        <a class="home-button primary" href="./register.html">Get started</a>
       </div>
     </header>
 
     <main id="main-content">
+      <!-- Hero Section -->
       <section class="home-hero">
-         <div class="hero-copy">
-          <p class="eyebrow">University Service Desk</p>
-          <h1>QuickAid keeps campus tickets moving from request to resolution.</h1>
+        <div class="hero-copy">
+          <div class="hero-badge">Streamline Campus Operations</div>
+          <h1>Modern service desk built for universities</h1>
           <p class="hero-lede">
-            A service desk portal for students, staff, and administrators to submit requests,
-            track status, route work to support teams, and monitor service performance.
+            Manage support requests efficiently with role-based access, real-time status tracking, and automated workflows. Built for students, staff, and administrators.
           </p>
           <div class="hero-actions">
-            <a class="home-button primary" href="./login.html">Open service desk</a>
-            <a class="home-button secondary" href="./register.html">Register access</a>
+            <a class="home-button primary" href="./login.html">Access the desk →</a>
+            <a class="home-button secondary" href="./register.html">Create account</a>
           </div>
-          <div class="service-strip" aria-label="Supported request categories">
-            <span>IT Support</span>
-            <span>Facilities</span>
-            <span>Academic Admin</span>
-            <span>Security</span>
+          <div class="hero-features">
+            <div class="feature-chip">
+              <span class="chip-icon">✓</span>
+              <span>Instant ticket tracking</span>
+            </div>
+            <div class="feature-chip">
+              <span class="chip-icon">✓</span>
+              <span>Multi-team support</span>
+            </div>
+            <div class="feature-chip">
+              <span class="chip-icon">✓</span>
+              <span>Built-in SLA monitoring</span>
+            </div>
           </div>
         </div>
 
-        <div class="hero-product" aria-label="QuickAid ticket dashboard preview">
-          <div class="product-topbar">
-            <span></span>
-            <span></span>
-            <span></span>
-            <strong>My Tickets</strong>
-          </div>
-          <div class="product-layout">
-            <aside class="product-sidebar">
-              <span class="side-item active"></span>
-              <span class="side-item"></span>
-              <span class="side-item short"></span>
-            </aside>
-            <section class="product-main">
-              <div class="metric-row">
-                <article><span>Open</span><strong>12</strong></article>
-                <article><span>In Progress</span><strong>8</strong></article>
-                <article><span>Resolved</span><strong>46</strong></article>
+        <div class="hero-visual">
+          <div class="dashboard-card">
+            <div class="card-header">
+              <div class="dots">
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
-              <div class="ticket-preview active">
-                <div>
-                  <strong>QKA-2026-000184</strong>
-                  <span>Student portal login issue</span>
+              <h3>Active Tickets</h3>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid">
+                <div class="stat">
+                  <span class="stat-label">Open</span>
+                  <strong class="stat-value">24</strong>
                 </div>
-                <em>High</em>
-              </div>
-              <div class="ticket-preview">
-                <div>
-                  <strong>QKA-2026-000185</strong>
-                  <span>Air conditioner leaking, Block B</span>
+                <div class="stat">
+                  <span class="stat-label">In Progress</span>
+                  <strong class="stat-value">12</strong>
                 </div>
-                <em class="medium">Medium</em>
-              </div>
-              <div class="ticket-preview">
-                <div>
-                  <strong>QKA-2026-000186</strong>
-                  <span>Microsoft 365 installation request</span>
+                <div class="stat">
+                  <span class="stat-label">Resolved Today</span>
+                  <strong class="stat-value">18</strong>
                 </div>
-                <em class="low">Low</em>
               </div>
-              <div class="product-status-bar" aria-label="Ticket queue status">
-                <span><b>Assigned</b> IT Support</span>
-                <span><b>SLA</b> 2h remaining</span>
-                <span><b>Updated</b> 09:42</span>
+              
+              <div class="ticket-list">
+                <div class="ticket-item high-priority">
+                  <div class="ticket-info">
+                    <span class="ticket-id">TKT-2026-001</span>
+                    <span class="ticket-title">Student portal access issue</span>
+                  </div>
+                  <span class="priority-badge high">High</span>
+                </div>
+                <div class="ticket-item medium-priority">
+                  <div class="ticket-info">
+                    <span class="ticket-id">TKT-2026-002</span>
+                    <span class="ticket-title">Facilities maintenance request</span>
+                  </div>
+                  <span class="priority-badge medium">Medium</span>
+                </div>
+                <div class="ticket-item">
+                  <div class="ticket-info">
+                    <span class="ticket-id">TKT-2026-003</span>
+                    <span class="ticket-title">Software license renewal</span>
+                  </div>
+                  <span class="priority-badge">Low</span>
+                </div>
               </div>
-            </section>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="trust-rail" aria-label="QuickAid service capabilities">
-        <div>
-          <strong>Single request queue</strong>
-          <span>Requester, category, priority, team, and SLA are visible together.</span>
+      <!-- Trust Indicators -->
+      <section class="trust-indicators">
+        <div class="indicator">
+          <strong>Single unified queue</strong>
+          <span>All requests from students, staff, and faculty in one place</span>
         </div>
-        <div>
-          <strong>Role-based portals</strong>
-          <span>Students and staff see tickets. Admins see operations and permissions.</span>
+        <div class="indicator">
+          <strong>Real-time updates</strong>
+          <span>Requesters see instant status changes and team assignments</span>
         </div>
-        <div>
-          <strong>Backend-ready flow</strong>
-          <span>Ticket submission, retrieval, admin updates, and support teams use API routes.</span>
+        <div class="indicator">
+          <strong>Enterprise-ready</strong>
+          <span>Role-based access, audit logs, and API integrations</span>
         </div>
       </section>
 
-      <section class="workflow-band" id="workflow" aria-labelledby="workflowTitle">
-        <div class="section-heading">
-          <p class="eyebrow">Service desk flow</p>
-          <h2 id="workflowTitle">A clear route for every campus request</h2>
+      <!-- Features Section -->
+      <section class="features-section" id="features">
+        <div class="section-header">
+          <h2>Powerful features for modern support</h2>
+          <p>Everything you need to manage campus service requests at scale</p>
         </div>
-        <div class="workflow-steps">
-          <article>
-            <span>01</span>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">📝</div>
+            <h3>Smart Intake</h3>
+            <p>Capture request details with structured forms. Categorize by department, priority, and type automatically.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Live Dashboard</h3>
+            <p>Monitor queue health, SLA compliance, and team workload in real time. Get visibility into what matters.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">👥</div>
+            <h3>Team Management</h3>
+            <p>Organize support teams, assign permissions, and route tickets to the right specialists instantly.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>Workflow Automation</h3>
+            <p>Set up rules to auto-assign, escalate, or resolve tickets based on priority and category.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>Role-Based Access</h3>
+            <p>Secure permissions ensure students see their tickets, admins see operations and reporting tools.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <h3>Always Available</h3>
+            <p>Access from any device. Track requests on desktop or mobile, anytime, anywhere.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workflow Section -->
+      <section class="workflow-section" id="workflow">
+        <div class="section-header">
+          <h2>How QuickAid works</h2>
+          <p>A streamlined process from request to resolution</p>
+        </div>
+
+        <div class="workflow-grid">
+          <div class="workflow-step">
+            <div class="step-number">1</div>
             <h3>Submit</h3>
-            <p>Students and staff report incidents, access requests, facilities issues, or academic administration needs.</p>
-          </article>
-          <article>
-            <span>02</span>
+            <p>Students and staff submit requests through an intuitive form. Include attachments, category, and priority.</p>
+          </div>
+          <div class="workflow-step">
+            <div class="step-number">2</div>
             <h3>Triage</h3>
-            <p>Requests are categorized by priority, department, requester details, and assigned support team.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h3>Resolve</h3>
-            <p>Support teams update status, record activity, and keep the requester informed until the ticket is closed.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="feature-section" id="features" aria-labelledby="featuresTitle">
-        <div class="section-heading">
-          <p class="eyebrow">Built like a real help desk</p>
-          <h2 id="featuresTitle">The essential tools are already in the workflow</h2>
-        </div>
-        <div class="feature-grid">
-          <article>
-            <h3>Ticket intake</h3>
-            <p>Structured fields capture request type, department, priority, description, and attachment metadata.</p>
-          </article>
-          <article>
-            <h3>Requester tracking</h3>
-            <p>Users can review ticket IDs, status, assigned team, update time, priority, and SLA cues.</p>
-          </article>
-          <article>
-            <h3>Knowledge base</h3>
-            <p>Self-help articles surface before submission, reducing duplicate requests and repeat support load.</p>
-          </article>
-          <article>
-            <h3>Admin console</h3>
-            <p>Administrators monitor queue health, update assignments, review access requests, and maintain teams.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="queue-section" aria-labelledby="queueTitle">
-        <div class="section-heading">
-          <p class="eyebrow">Queue Intelligence</p>
-          <h2 id="queueTitle">Clear signals for fast triage</h2>
-        </div>
-        <div class="queue-board">
-          <div class="queue-column">
-            <div class="queue-head">
-              <span>Open</span>
-              <strong>12</strong>
-            </div>
-            <p>New requests waiting for support team review.</p>
+            <p>Support teams review incoming tickets, assign ownership, and set SLAs based on priority and impact.</p>
           </div>
-          <div class="queue-column active">
-            <div class="queue-head">
-              <span>In Progress</span>
-              <strong>8</strong>
-            </div>
-            <p>Assigned tickets with active updates and visible ownership.</p>
+          <div class="workflow-step">
+            <div class="step-number">3</div>
+            <h3>Update</h3>
+            <p>Teams collaborate and update requesters on progress. Add comments, status changes, and resolution notes.</p>
           </div>
-          <div class="queue-column">
-            <div class="queue-head">
-              <span>Resolved</span>
-              <strong>46</strong>
-            </div>
-            <p>Closed work remains searchable for audit and follow-up.</p>
+          <div class="workflow-step">
+            <div class="step-number">4</div>
+            <h3>Close</h3>
+            <p>Mark tickets as resolved. Requesters confirm satisfaction. Closed tickets remain searchable and auditable.</p>
           </div>
         </div>
       </section>
 
-      <section class="operations-panel" id="operations" aria-labelledby="operationsTitle">
-        <div>
-          <p class="eyebrow">Operational visibility</p>
-          <h2 id="operationsTitle">Designed for daily support work, not just ticket submission</h2>
-          <p>
-            QuickAid follows patterns used by mature help desk platforms: centralized ticket queues,
-            self-service content, assignment controls, SLA awareness, and admin reporting.
-          </p>
+      <!-- Benefits Section -->
+      <section class="benefits-section" id="benefits">
+        <div class="section-header">
+          <h2>Why campuses choose QuickAid</h2>
+          <p>Designed by support professionals for support professionals</p>
         </div>
-        <div class="ops-list" aria-label="Operations capabilities">
-          <div><span>Status controls</span><strong>Open, In Progress, Resolved</strong></div>
-          <div><span>Team management</span><strong>Groups, staff, permissions</strong></div>
-          <div><span>Reporting</span><strong>Volume, priority, category, trends</strong></div>
+
+        <div class="benefits-grid">
+          <div class="benefit-item">
+            <h3>Faster resolution times</h3>
+            <p>Clear assignment and SLA tracking mean issues get solved quicker. Track time to resolution and celebrate wins.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Better visibility</h3>
+            <p>Everyone knows what's happening. Requesters track their tickets. Teams see queue health. Admins get real metrics.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Reduced silos</h3>
+            <p>Stop using email and spreadsheets. One unified inbox for all requests from all departments and teams.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Audit-ready</h3>
+            <p>Complete history of all requests, assignments, updates, and resolutions. Compliance and accountability built in.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA Section -->
+      <section class="cta-section">
+        <div class="cta-content">
+          <h2>Ready to modernize your service desk?</h2>
+          <p>Join universities using QuickAid to manage support requests efficiently.</p>
+          <div class="cta-actions">
+            <a class="home-button primary large" href="./login.html">Sign in to service desk</a>
+            <a class="home-button secondary large" href="./register.html">Create account now</a>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="home-footer">
-      <div>
-        <strong>QuickAid</strong>
-        <span>Campus helpdesk portal for request tracking and support operations.</span>
+      <div class="footer-content">
+        <div class="footer-brand">
+          <strong>QuickAid</strong>
+          <p>Modern service desk for universities.</p>
+        </div>
+        <div class="footer-links">
+          <a href="./login.html">Sign in</a>
+          <a href="./register.html">Register</a>
+          <a href="#features">Features</a>
+        </div>
       </div>
-      <div class="footer-links">
-        <a href="./login.html">Login</a>
-        <a href="./register.html">Register</a>
-        <a href="#features">Features</a>
+      <div class="footer-bottom">
+        <p>&copy; 2026 QuickAid. All rights reserved.</p>
       </div>
     </footer>
   </body>

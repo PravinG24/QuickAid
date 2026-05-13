@@ -201,6 +201,10 @@ function sanitize(value) {
   return String(value || "").trim();
 }
 
+function setTextContent(el, value) {
+  if (el) el.textContent = String(value ?? "");
+}
+
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
@@ -241,12 +245,14 @@ function clearFormErrors() {
 }
 
 function showSubmitResult(type, message) {
+  if (!submitResult) return;
   submitResult.className = `result ${type}`;
   submitResult.textContent = message;
   submitResult.classList.remove("hidden");
 }
 
 function hideSubmitResult() {
+  if (!submitResult) return;
   submitResult.classList.add("hidden");
 }
 
@@ -357,7 +363,7 @@ function saveDraft() {
   };
   localStorage.setItem(draftStorageKey, JSON.stringify(draft));
   const savedTime = formatTime(draft.savedAt);
-  draftHint.textContent = `Draft auto-saved at ${savedTime}.`;
+  setTextContent(draftHint, `Draft auto-saved at ${savedTime}.`);
 }
 
 function loadDraft() {
@@ -376,11 +382,12 @@ function loadDraft() {
     form.location.value = draft.location || "";
     form.description.value = draft.description || "";
     form.consent.checked = Boolean(draft.consent);
-    descCount.textContent = String((draft.description || "").length);
-    draftHint.textContent = draft.savedAt
-      ? `Draft restored from ${formatDateTime(draft.savedAt)}.`
-      : "Draft restored.";
-    slaHint.textContent = getSlaByPriority(form.priority.value);
+    setTextContent(descCount, String((draft.description || "").length));
+    setTextContent(
+      draftHint,
+      draft.savedAt ? `Draft restored from ${formatDateTime(draft.savedAt)}.` : "Draft restored."
+    );
+    setTextContent(slaHint, getSlaByPriority(form.priority.value));
     syncPrioritySegUi();
   } catch {
     // ignore invalid draft payload
@@ -389,7 +396,7 @@ function loadDraft() {
 
 function clearDraft() {
   localStorage.removeItem(draftStorageKey);
-  draftHint.textContent = "Draft cleared.";
+  setTextContent(draftHint, "Draft cleared.");
 }
 
 function currentIsoTime() {
@@ -608,7 +615,6 @@ function openKnowledgeBasePanel() {
 
 function showSubmittedTicketTemporarily(ticket, requesterEmail) {
   if (!ticket) return;
-  // Demo-only preview bridge for runs without window.QUICKAID_API_BASE configured.
   const normalized = normalizeTicketRecord({
     ...ticket,
     email: ticket.email || requesterEmail || "",
@@ -621,6 +627,19 @@ function showSubmittedTicketTemporarily(ticket, requesterEmail) {
   applyStatusFilter();
 }
 
+function mergeSubmittedTicketWithFetchedTickets(submittedTicket, fetchedTickets, requesterEmail) {
+  const normalizedSubmitted = normalizeTicketRecord({
+    ...submittedTicket,
+    email: submittedTicket?.email || requesterEmail || "",
+  });
+  const normalizedFetched = Array.isArray(fetchedTickets) ? fetchedTickets.map(normalizeTicketRecord) : [];
+  const submittedId = String(normalizedSubmitted.ticket_id || "");
+  const existsInFetched = submittedId
+    ? normalizedFetched.some((ticket) => String(ticket.ticket_id || "") === submittedId)
+    : false;
+  return existsInFetched ? normalizedFetched : [normalizedSubmitted, ...normalizedFetched];
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -628,6 +647,27 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function renderInlineFormatting(value) {
+  return escapeHtml(value)
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+}
+
+function renderDescriptionFormatting(value) {
+  const text = String(value || "No additional description provided.");
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const bullet = line.match(/^\s*-\s+(.+)$/);
+      if (bullet) return `<span class="description-line description-bullet">&bull; ${renderInlineFormatting(bullet[1])}</span>`;
+      if (!line.trim()) return '<span class="description-line description-empty">&nbsp;</span>';
+      return `<span class="description-line">${renderInlineFormatting(line)}</span>`;
+    })
+    .join("");
 }
 
 function getSlaMsByPriority(priority) {
@@ -707,8 +747,7 @@ function openTicketDetails(ticket) {
     inlineDetailCategory.textContent = `Department: ${ticket.category || "General Inquiry"}`;
     inlineDetailLocation.textContent = `Location: ${ticket.location || "Not provided"}`;
     inlineDetailUpdated.textContent = `Updated: ${formatDateTime(updatedAt)}`;
-    inlineDetailDescription.textContent =
-      normalizedTicket.description || "No additional description provided.";
+    inlineDetailDescription.innerHTML = renderDescriptionFormatting(normalizedTicket.description);
   }
 
   // Open the full ticket page from the inline summary panel.
@@ -1065,7 +1104,7 @@ function replaceSelection(textarea, replacer) {
   const nextCaret = typeof caretOffset === "number" ? start + caretOffset : start + text.length;
   textarea.focus();
   textarea.setSelectionRange(nextCaret, nextCaret);
-  descCount.textContent = String(textarea.value.length);
+  setTextContent(descCount, textarea.value.length);
   saveDraft();
 }
 
@@ -1149,7 +1188,9 @@ function applyEditorAction(action) {
   if (action === "link") {
     replaceSelection(desc, (selected) => {
       const val = selected || "link text";
-      return { text: `[${val}](https://)`, caretOffset: 3 + val.length };
+      const isUrl = /^https?:\/\/\S+$/i.test(val);
+      const text = isUrl ? `[link text](${val})` : `[${val}](https://)`;
+      return { text, caretOffset: isUrl ? 10 : 3 + val.length };
     });
   }
 }
@@ -1417,10 +1458,11 @@ form.addEventListener("submit", async (event) => {
   if (Object.keys(errors).length) return;
 
   submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting...";
+  setTextContent(submitBtn, "Submitting...");
 
   try {
     const result = await submitTicket(payload);
+    showSubmittedTicketTemporarily(result, payload.email);
     showSubmitResult(
       "success",
       `Success: Ticket ${result.ticket_id} submitted. Current status: ${
@@ -1428,23 +1470,29 @@ form.addEventListener("submit", async (event) => {
       }.`
     );
     form.reset();
-    descCount.textContent = "0";
-    attachmentInfo.textContent = "";
+    setTextContent(descCount, "0");
+    setTextContent(attachmentInfo, "");
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    const data = await getTicketsByEmail(payload.email);
-    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
-    persistTicketCache(lastLoadedTickets);
-    applyStatusFilter();
+    getTicketsByEmail(payload.email)
+      .then((data) => {
+        lastLoadedTickets = mergeSubmittedTicketWithFetchedTickets(result, data?.tickets, payload.email);
+        persistTicketCache(lastLoadedTickets);
+        applyStatusFilter();
+      })
+      .catch(() => {
+        showSubmittedTicketTemporarily(result, payload.email);
+      });
     setTimeout(() => {
-      closeCreateFormWrap();
+      closeCreateFormWrap({ keepResult: true });
       openTrackPanel();
     }, 700);
+    setTimeout(hideSubmitResult, 3200);
   } catch (error) {
     showSubmitResult("error", error.message);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "Create";
+    setTextContent(submitBtn, "Create");
   }
 });
 
@@ -1484,7 +1532,7 @@ trackForm.addEventListener("submit", async (event) => {
 });
 
 desc.addEventListener("input", () => {
-  descCount.textContent = String(desc.value.length);
+  setTextContent(descCount, desc.value.length);
   saveDraft();
 });
 
@@ -1521,7 +1569,7 @@ templateButtons.forEach((button) => {
     if (form.department) form.department.value = tpl.department || "";
     form.subject.value = tpl.subject;
     form.description.value = tpl.description;
-    descCount.textContent = String(form.description.value.length);
+    setTextContent(descCount, form.description.value.length);
     hideSubmitResult();
     updateKnowledgeSuggestions();
     saveDraft();
@@ -1561,7 +1609,7 @@ if (subjectInput) subjectInput.addEventListener("input", () => {
 // Extra frontend-only knowledge-base feedback is disabled until backend has KB routes.
 // kbList?.addEventListener("click", handleKbFeedbackVote);
 // kbPageList?.addEventListener("click", handleKbFeedbackVote);
-/* Extra frontend-only function disabled: attachments and rich-text helpers have no backend route yet.
+/* Extra frontend-only function disabled: attachments have no backend route yet.
 if (attachmentInput) attachmentInput.addEventListener("change", validateAttachment);
 if (attachmentDropzone && attachmentInput) {
   const trigger = () => attachmentInput.click();
@@ -1573,6 +1621,8 @@ if (attachmentDropzone && attachmentInput) {
     }
   });
 }
+*/
+
 if (editorToolButtons?.length) {
   editorToolButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1599,10 +1649,10 @@ if (emojiPicker) {
     if (!inPicker && !onEmojiBtn) closeEmojiPicker();
   });
 }
-*/
+
 if (form.priority) {
   form.priority.addEventListener("change", () => {
-    slaHint.textContent = getSlaByPriority(form.priority.value);
+    setTextContent(slaHint, getSlaByPriority(form.priority.value));
     saveDraft();
   });
 }
@@ -1660,13 +1710,13 @@ sidebarDashboardBtn?.addEventListener("click", () => {
 
 form.addEventListener("reset", () => {
   setTimeout(() => {
-    descCount.textContent = "0";
+    setTextContent(descCount, "0");
     if (kbList) kbList.innerHTML = "";
     kbSuggestions?.querySelector(".kb-empty")?.style.setProperty("display", "block");
-    if (attachmentInfo) attachmentInfo.textContent = "";
+    setTextContent(attachmentInfo, "");
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    slaHint.textContent = getSlaByPriority("Medium");
+    setTextContent(slaHint, getSlaByPriority("Medium"));
   }, 0);
 });
 
@@ -1741,11 +1791,11 @@ function openCreateModal() {
 btnNewTicket?.addEventListener("click", openCreateModal);
 btnNewTicketTop?.addEventListener("click", openCreateModal);
 
-function closeCreateFormWrap() {
+function closeCreateFormWrap(options = {}) {
   if (!createFormWrap) return;
   createFormWrap.classList.add("hidden");
   createFormWrap.setAttribute("aria-hidden", "true");
-  hideSubmitResult();
+  if (!options.keepResult) hideSubmitResult();
   if (panels?.submit && panels?.track) {
     panels.submit.classList.remove("active");
     panels.track.classList.add("active");
@@ -1786,9 +1836,7 @@ document.addEventListener("keydown", (e) => {
   */
   if (createFormWrap) closeCreateFormWrap();
   closeNotifDropdown();
-  /* Extra frontend-only function disabled: emoji picker has no backend route yet.
   closeEmojiPicker();
-  */
 });
 
 // SLA countdown auto-refresh for visible ticket rows.
