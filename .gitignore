@@ -5,6 +5,10 @@ backend/__azurite_db_*.json
 backend/__blobstorage__/
 __azurite_db_*.json
 
+# Local product/design notes
+DESIGN.md
+PRODUCT.md
+
 # Python virtual environment
 .venv/
 __pycache__/
