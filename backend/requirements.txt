@@ -1,5 +1,5 @@
-azure-functions
-azure-cosmos==4.5.1
+azure-functions==1.21.3
+azure-cosmos==4.7.0
 azure-keyvault-secrets==4.7.0
 azure-identity==1.15.0
 sendgrid==6.11.0
