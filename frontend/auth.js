@@ -86,9 +86,12 @@ function toDashboard(session) {
 }
 
 async function apiPost(path, payload) {
+  const headers = { "Content-Type": "application/json" };
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) headers["x-functions-key"] = functionKey;
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));

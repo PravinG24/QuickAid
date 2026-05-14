@@ -42,10 +42,6 @@ function syncMessageFromName() {
   messageFromName.textContent = next || "Microsoft User";
 }
 
-const prioritySegButtons = document.querySelectorAll(
-  ".priority-seg .seg-btn[data-priority]"
-);
-
 const btnSignIn = document.getElementById("btnSignIn");
 const btnProfile = document.getElementById("btnProfile");
 const btnLogout = document.getElementById("btnLogout");
@@ -328,33 +324,12 @@ function validateTicketPayload(payload) {
   return errors;
 }
 
-function getSlaByPriority(priority) {
-  const p = (priority || "").toLowerCase();
-  if (p === "urgent") return "Estimated first response SLA: within 1 working hour";
-  if (p === "high") return "Estimated first response SLA: within 2 working hours";
-  if (p === "low") return "Estimated first response SLA: within 8 working hours";
-  return "Estimated first response SLA: within 4 working hours";
-}
-
-function syncPrioritySegUi() {
-  if (!prioritySegButtons?.length) return;
-  if (!form?.priority) return;
-  const current = String(form.priority.value || "Medium");
-  prioritySegButtons.forEach((btn) => {
-    const p = String(btn.dataset.priority || "");
-    const isActive = p === current;
-    btn.classList.toggle("active", isActive);
-    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
-  });
-}
-
 function saveDraft() {
   const draft = {
     category: form.category.value,
     name: form.name.value,
     email: form.email.value,
     department: form.department?.value || "",
-    priority: form.priority.value,
     subject: form.subject.value,
     location: form.location.value,
     description: form.description.value,
@@ -376,8 +351,7 @@ function loadDraft() {
     form.name.value = draft.name || "";
     form.email.value = draft.email || "";
     if (form.department) form.department.value = draft.department || draft.assignTo || "";
-    const p = draft.priority || "Medium";
-    form.priority.value = ["Low", "Medium", "High"].includes(p) ? p : "Medium";
+    if (form.priority) form.priority.value = "Medium";
     form.subject.value = draft.subject || "";
     form.location.value = draft.location || "";
     form.description.value = draft.description || "";
@@ -387,8 +361,7 @@ function loadDraft() {
       draftHint,
       draft.savedAt ? `Draft restored from ${formatDateTime(draft.savedAt)}.` : "Draft restored."
     );
-    setTextContent(slaHint, getSlaByPriority(form.priority.value));
-    syncPrioritySegUi();
+    setTextContent(slaHint, "Priority will be assigned by admin triage after review.");
   } catch {
     // ignore invalid draft payload
   }
@@ -432,9 +405,9 @@ async function submitTicket(payload) {
 }
 
 async function getTicketsByEmail(email) {
-  // Backend-first mode: GET /api/get_tickets is the only ticket list source.
+  // Backend-first mode: GET /api/get_ticket is the requester ticket list source.
   const response = await fetch(
-    `${API_BASE}/api/get_tickets?email=${encodeURIComponent(email)}`,
+    `${API_BASE}/api/get_ticket?email=${encodeURIComponent(email)}`,
     {
       method: "GET",
       headers: {
@@ -1439,7 +1412,6 @@ form.addEventListener("submit", async (event) => {
     email: sanitize(form.email.value),
     category: sanitize(form.category.value),
     department: sanitize(form.category.value),
-    priority: sanitize(form.priority.value || "Medium"),
     assigned_to: sanitize(form.category.value),
     subject: sanitize(form.subject.value),
     location: sanitize(form.location.value),
@@ -1650,28 +1622,6 @@ if (emojiPicker) {
   });
 }
 
-if (form.priority) {
-  form.priority.addEventListener("change", () => {
-    setTextContent(slaHint, getSlaByPriority(form.priority.value));
-    saveDraft();
-  });
-}
-
-if (prioritySegButtons?.length) {
-  prioritySegButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (!form?.priority) return;
-      const next = String(btn.dataset.priority || "Medium");
-      form.priority.value = next;
-      syncPrioritySegUi();
-      // Reuse the existing select change handler (SLA + draft).
-      form.priority.dispatchEvent(new Event("change"));
-    });
-  });
-  // Ensure UI matches current priority select value.
-  syncPrioritySegUi();
-}
-
 ["category", "department", "name", "email", "location"].forEach((fieldName) => {
   if (!form[fieldName]) return;
   form[fieldName].addEventListener("input", saveDraft);
@@ -1716,7 +1666,7 @@ form.addEventListener("reset", () => {
     setTextContent(attachmentInfo, "");
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    setTextContent(slaHint, getSlaByPriority("Medium"));
+    setTextContent(slaHint, "Priority will be assigned by admin triage after review.");
   }, 0);
 });
 

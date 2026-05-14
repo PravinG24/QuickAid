@@ -128,6 +128,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "title":       title,
         "description": description,
         "category":    category,
+        "priority":    "Medium",
         "status":      "Open",
         "priority":    "Low",           # ← default priority
         "hasImage":    image_data is not None,

@@ -37,8 +37,8 @@ These routes exist in `backend/` and are used by the frontend.
     ```
   - Allowed category values currently used by backend: `IT`, `HR`, `Finance`, `Operations`, `General`.
 
-- [ ] `GET /api/get_tickets?email={email}`
-  - Used to load a user's ticket list.
+- [ ] `GET /api/get_ticket?email={email}&status={status}&category={category}`
+  - Used to load a user's ticket list, with optional `status` and `category` filters.
   - Expected response:
     ```json
     {
@@ -47,10 +47,6 @@ These routes exist in `backend/` and are used by the frontend.
       "tickets": []
     }
     ```
-
-- [ ] `GET /api/get_ticket?email={email}&status={status}&category={category}`
-  - Same ticket-list behavior with optional `status` and `category` filters.
-  - Frontend can use this for backend-side status/category filtering.
 
 ## Important Current Gaps In Existing Routes
 
@@ -93,7 +89,7 @@ These routes exist in `backend/` and are used by the frontend.
 ## Backend Status: Admin Dashboard
 
 Admin ticket data should use the `/api/admin/*` routes. Do not use
-`/api/get_tickets?email={email}` for the admin dashboard because that route is
+`/api/get_ticket?email={email}` for the admin dashboard because that route is
 requester-scoped and only returns tickets for one email address.
 
 - [x] `GET /api/admin/overview?range={today|week|month|year}`

@@ -71,17 +71,16 @@ For same-origin hosting where the frontend and Azure Functions app share one dom
 
 Currently supported endpoints:
 - `POST /api/submit_ticket`
-- `GET /api/get_tickets?email={email}`
+- `GET /api/get_ticket?email={email}`
 - `POST /api/register_user`
 - `POST /api/user_login`
 - `POST /api/register_admin`
 - `POST /api/admin_login`
+- `GET /api/tickets`
+- `PATCH /api/tickets_update/{ticketId}`
 
 Disabled until backend routes exist:
 - `GET /api/admin/overview?range={today|week|month|year}`
-- `GET /api/admin/tickets`
-- `PATCH /api/admin/tickets/{ticketId}/status`
-- `PATCH /api/admin/tickets/{ticketId}/assignment`
 - `GET|POST /api/admin/support_teams`
 - `POST /api/admin/support_teams/{teamId}/staff`
 - `GET /api/admin/analytics`
@@ -103,7 +102,7 @@ Disabled until backend routes exist:
 - Placeholder + helper text for every major field
 - Quick templates (`Wi-Fi`, `Aircond`, `Portal login`) to reduce submission friction
 - Suggested self-help articles based on subject keywords
-- Dynamic first-response SLA hint by priority
+- Admin-owned priority assignment with requester-side priority display/filtering
 - Track tickets with status filter and sort options
 - Draft autosave in `localStorage` and restore on reload
 

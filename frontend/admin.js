@@ -248,7 +248,8 @@ const addStaffEmailInput = document.getElementById("addStaffEmail");
 const addStaffPhoneInput = document.getElementById("addStaffPhone");
 const addStaffSubmitBtn = document.getElementById("addStaffSubmitBtn");
 const sharedTicketView = window.QuickAidTicketView || {};
-const overviewStatusOptions = ["Open", "In Progress", "Resolved"];
+const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
+const overviewPriorityOptions = ["High", "Medium", "Low"];
 const overviewTeamOptions = [
   "IT Network Services",
   "Digital Learning Support",
@@ -1027,6 +1028,7 @@ async function handleAddStaffInTeamSubmit() {
     tone: persistResult.ok ? "success" : "warning",
   });
 }
+*/
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -1223,15 +1225,17 @@ function syncOverviewRowControls(ticket) {
   const row = control?.closest("tr");
   if (!(row instanceof HTMLTableRowElement)) return;
   const statusSelect = row.querySelector('select[data-control="status"]');
+  const prioritySelect = row.querySelector('select[data-control="priority"]');
   const teamSelect = row.querySelector('select[data-control="team"]');
   const selectCheckbox = row.querySelector('input[data-control="select-ticket"]');
   if (statusSelect instanceof HTMLSelectElement) statusSelect.value = ticket.status;
+  if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = ticket.priority;
   if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTeam;
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
 }
-*/
+
 
 function buildLineCoordinates(values, height = 180, width = 700, maxValue = 1, startX = 20) {
   const safeValues = Array.isArray(values) && values.length ? values : [0, 0, 0, 0, 0, 0, 0];
@@ -1577,35 +1581,31 @@ function recalculateOverviewMetrics() {
 }
 
 async function refreshOverviewForActiveRange() {
-  const overviewData = await fetchJsonOrFallback(`/api/admin/overview?range=${encodeURIComponent(activeRange)}`, null);
-  if (overviewData) {
-    renderOverview(overviewData);
-    return;
-  }
   recalculateOverviewMetrics();
 }
 
 async function persistOverviewTicketUpdate(ticket) {
   try {
-    const [statusRes, teamRes] = await Promise.all([
-      fetch(`${API_BASE}/api/admin/tickets/${encodeURIComponent(ticket.ticketId)}/status`, {
-        method: "PATCH",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ status: ticket.status }),
+    const response = await fetch(`${API_BASE}/api/tickets_update/${encodeURIComponent(ticket.ticketId)}`, {
+      method: "PATCH",
+      headers: apiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        status: ticket.status,
+        priority: ticket.priority,
+        assignedTeam: ticket.assignedTeam,
       }),
-      fetch(`${API_BASE}/api/admin/tickets/${encodeURIComponent(ticket.ticketId)}/assignment`, {
-        method: "PATCH",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ assignedTeam: ticket.assignedTeam }),
-      }),
-    ]);
-    return statusRes.ok && teamRes.ok;
+    });
+    if (!response.ok) return false;
+    const data = await response.json().catch(() => null);
+    const savedTicket = data?.ticket ? normalizeAdminTicket(data.ticket) : null;
+    if (savedTicket) Object.assign(ticket, savedTicket);
+    return true;
   } catch {
     return false;
   }
 }
 
-/* Extra frontend-only function disabled: access request approval has no backend route yet.
+/* Extra frontend-only function disabled: access request approval has no backend route yet. */
 async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
   // new function from frontend
   // BACKEND NOTE:
@@ -1623,7 +1623,7 @@ async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
     return false;
   }
 }
-*/
+
 
 function renderTicketDetails(ticket) {
   if (!adminTicketModalContent) return;
@@ -1640,6 +1640,19 @@ function renderTicketDetails(ticket) {
                 (status) =>
                   `<option value="${escapeHtml(status)}" ${status === ticket.status ? "selected" : ""}>${escapeHtml(
                     status
+                  )}</option>`
+              )
+              .join("")}
+          </select>
+        </label>
+        <label>
+          <span>Priority</span>
+          <select id="adminModalPrioritySelect" class="table-select">
+            ${overviewPriorityOptions
+              .map(
+                (priority) =>
+                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
+                    priority
                   )}</option>`
               )
               .join("")}
@@ -1690,13 +1703,16 @@ function bindOverviewInteractions() {
     const row = target.closest("tr");
     if (!(row instanceof HTMLTableRowElement)) return;
     const statusSelect = row.querySelector('select[data-control="status"]');
+    const prioritySelect = row.querySelector('select[data-control="priority"]');
     const teamSelect = row.querySelector('select[data-control="team"]');
     if (!(statusSelect instanceof HTMLSelectElement)) return;
+    if (!(prioritySelect instanceof HTMLSelectElement)) return;
     if (!(teamSelect instanceof HTMLSelectElement)) return;
 
     const nextStatus = String(statusSelect.value || ticket.status);
+    const nextPriority = String(prioritySelect.value || ticket.priority);
     const nextTeam = String(teamSelect.value || ticket.assignedTeam);
-    applyTicketChanges(ticket, nextStatus, nextTeam, target);
+    applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
 
   ticketsBody.addEventListener("change", (event) => {
@@ -1722,13 +1738,16 @@ function bindOverviewInteractions() {
     const ticket = allTicketsState.find((item) => item.ticketId === activeOverviewModalTicketId);
     if (!ticket) return;
     const statusSelect = document.getElementById("adminModalStatusSelect");
+    const prioritySelect = document.getElementById("adminModalPrioritySelect");
     const teamSelect = document.getElementById("adminModalTeamSelect");
     if (!(statusSelect instanceof HTMLSelectElement)) return;
+    if (!(prioritySelect instanceof HTMLSelectElement)) return;
     if (!(teamSelect instanceof HTMLSelectElement)) return;
 
     const nextStatus = String(statusSelect.value || ticket.status);
+    const nextPriority = String(prioritySelect.value || ticket.priority);
     const nextTeam = String(teamSelect.value || ticket.assignedTeam);
-    await applyTicketChanges(ticket, nextStatus, nextTeam, target);
+    await applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
 
   const selectAllCheckbox = document.getElementById("manageSelectAll");
@@ -1794,7 +1813,7 @@ function bindOverviewInteractions() {
       bulkDrawerApplyBtn.textContent = "Applying...";
     }
     await Promise.all(
-      selectedTickets.map((ticket) => applyTicketChanges(ticket, nextStatus, nextTeam, null, true))
+      selectedTickets.map((ticket) => applyTicketChanges(ticket, nextStatus, ticket.priority, nextTeam, null, true))
     );
     if (bulkDrawerApplyBtn instanceof HTMLButtonElement) {
       bulkDrawerApplyBtn.disabled = false;
@@ -1878,7 +1897,18 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.user)}</td>
         <td>${escapeHtml(ticket.issue)}</td>
         <td>${escapeHtml(ticket.category)}</td>
-        <td><span class="pill ${toPriorityClass(ticket.priority)}">${escapeHtml(ticket.priority)}</span></td>
+        <td>
+          <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
+            ${overviewPriorityOptions
+              .map(
+                (priority) =>
+                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
+                    priority
+                  )}</option>`
+              )
+              .join("")}
+          </select>
+        </td>
         <td>
           <select class="table-select" data-control="status" data-ticket-id="${escapeHtml(ticket.ticketId)}">
             ${overviewStatusOptions
@@ -2101,10 +2131,12 @@ function renderSupportTeams(data) {
   });
 }
 
-async function applyTicketChanges(ticket, nextStatus, nextTeam, triggerButton = null, suppressToast = false) {
+async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, triggerButton = null, suppressToast = false) {
   const prevStatus = ticket.status;
+  const prevPriority = ticket.priority;
   const prevTeam = ticket.assignedTeam;
   ticket.status = nextStatus || ticket.status;
+  ticket.priority = nextPriority || ticket.priority;
   ticket.assignedTeam = nextTeam || ticket.assignedTeam;
   ticket.updated_at = new Date().toISOString();
   recalculateOverviewMetrics();
@@ -2117,6 +2149,7 @@ async function applyTicketChanges(ticket, nextStatus, nextTeam, triggerButton = 
   const ok = await persistOverviewTicketUpdate(ticket);
   const changes = [];
   if (prevStatus !== ticket.status) changes.push(`Status: ${prevStatus} -> ${ticket.status}`);
+  if (prevPriority !== ticket.priority) changes.push(`Priority: ${prevPriority} -> ${ticket.priority}`);
   if (prevTeam !== ticket.assignedTeam) changes.push(`Team: ${prevTeam} -> ${ticket.assignedTeam}`);
   const detail = changes.length ? `${ticket.ticketId} | ${changes.join(" | ")}` : `${ticket.ticketId} | No field changes`;
   if (!suppressToast) {
@@ -2133,18 +2166,13 @@ async function applyTicketChanges(ticket, nextStatus, nextTeam, triggerButton = 
 }
 
 async function loadAdminData() {
-  const [ticketsData, overviewData] = await Promise.all([
-    fetchJsonOrFallback("/api/admin/tickets", null),
-    fetchJsonOrFallback(`/api/admin/overview?range=${encodeURIComponent(activeRange)}`, null),
-  ]);
+  const ticketsData = await fetchJsonOrFallback("/api/tickets", null);
   const tickets = Array.isArray(ticketsData?.tickets)
     ? ticketsData.tickets.map(normalizeAdminTicket)
-    : Array.isArray(overviewData?.tickets)
-      ? overviewData.tickets.map(normalizeAdminTicket)
-      : [];
+    : [];
   allTicketsState = tickets;
   overviewTicketsState = getOverviewTicketsByRange();
-  renderOverview(overviewData || computeOverviewDataFromTickets(overviewTicketsState));
+  renderOverview(computeOverviewDataFromTickets(overviewTicketsState));
   renderManageTickets(allTicketsState);
   const openCount = allTicketsState.filter((ticket) => ticket.status === "Open").length;
   const resolvedCount = allTicketsState.filter((ticket) => ticket.status === "Resolved").length;
@@ -2159,15 +2187,15 @@ async function loadAdminData() {
     cards: [
       {
         title: "Live ticket data",
-        copy: `${allTicketsState.length} ticket(s) loaded from the backend admin API.`,
+        copy: `${allTicketsState.length} ticket(s) loaded from the backend ticket API.`,
       },
     ],
   });
   renderSupportTeams({ teams: [], accessRequests: [] });
-  if (!ticketsData && !overviewData) {
+  if (!ticketsData) {
     showUpdateToast({
       title: "Admin API unavailable",
-      detail: "Could not load /api/admin data from the backend.",
+      detail: "Could not load /api/tickets from the backend.",
       tone: "warning",
     });
   }

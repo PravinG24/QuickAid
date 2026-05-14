@@ -284,21 +284,8 @@
               <small class="error" id="departmentError"></small>
             </label>
 
-            <label class="field hidden">
-              <span>Priority</span>
-              <select id="priority" name="priority" class="priority-select">
-                <option value="High">High</option>
-                <option value="Medium" selected>Medium</option>
-                <option value="Low">Low</option>
-              </select>
-              <div class="priority-seg" role="radiogroup" aria-label="Priority">
-                <button type="button" class="seg-btn" data-priority="High" aria-pressed="false">High</button>
-                <button type="button" class="seg-btn" data-priority="Medium" aria-pressed="true">Medium</button>
-                <button type="button" class="seg-btn" data-priority="Low" aria-pressed="false">Low</button>
-              </div>
-              <small class="helper">Higher priority gets faster first response.</small>
-              <!-- Frontend-only until backend supports ticket priority. -->
-            </label>
+            <!-- Backend note: ticket priority is assigned by admin triage after creation. -->
+            <input id="priority" name="priority" type="hidden" value="Medium" />
 
             <label class="field field-wide">
               <span>Subject <strong>*</strong></span>
@@ -402,7 +389,7 @@
           </div>
 
           <div class="form-meta">
-            <p id="slaHint">Estimated first response SLA: 4 working hours</p>
+            <p id="slaHint">Priority will be assigned by admin triage after review.</p>
             <p id="draftHint">Draft not saved yet.</p>
           </div>
 

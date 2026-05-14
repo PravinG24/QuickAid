@@ -28,7 +28,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Validate allowed fields ──────────────────────────────────────────────
-    allowed_updates = ["status", "priority", "assignedTo", "adminNotes", "category"]
+    allowed_updates = ["status", "priority", "assignedTeam", "adminNotes", "category"]
     updates = {k: v for k, v in body.items() if k in allowed_updates}
 
     if not updates:
@@ -41,9 +41,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Validate status ──────────────────────────────────────────────────────
-    if "status" in updates and updates["status"] not in ["Open", "Closed"]:
+    if "status" in updates and updates["status"] not in ["Open", "In Progress", "Resolved", "Closed"]:
         return func.HttpResponse(
-            json.dumps({"error": "Invalid status. Allowed values: Open, Closed"}),
+            json.dumps({"error": "Invalid status. Allowed values: Open, In Progress, Resolved, Closed"}),
             status_code=400,
             mimetype="application/json"
         )
@@ -70,12 +70,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # ── Connect to Cosmos DB ─────────────────────────────────────────────────
     try:
-        client    = CosmosClient.from_connection_string(os.environ["COSMOS_CONNECTION_STRING"])
-        database  = client.get_database_client(os.environ["COSMOS_DATABASE_NAME"])
-        container = database.get_container_client(os.environ["COSMOS_CONTAINER_NAME"])
+        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+        database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
+        container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 
         # ── Find the ticket ──────────────────────────────────────────────────
-        find_query  = "SELECT * FROM c WHERE c.type = 'ticket' AND c.id = @ticketId"
+        find_query  = "SELECT * FROM c WHERE c.type = 'ticket' AND (c.id = @ticketId OR c.ticketId = @ticketId)"
         find_params = [{"name": "@ticketId", "value": ticket_id}]
         results = list(container.query_items(
             query=find_query,
@@ -101,6 +101,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             ticket[key] = value
 
         ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        ticket["updated_at"] = ticket["updatedAt"]
 
         # ── Save updated ticket ──────────────────────────────────────────────
         container.replace_item(item=ticket["id"], body=ticket)

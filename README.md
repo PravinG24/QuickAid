@@ -16,7 +16,6 @@ QuickAid/
 │   │   └── secrets.py          # Key Vault loader (Managed Identity)
 │   ├── submit_ticket/          # POST /api/submit_ticket
 │   ├── get_ticket/             # GET  /api/get_ticket
-│   ├── get_tickets/            # GET  /api/get_tickets (alias of get_ticket)
 │   ├── register_user/          # POST /api/register_user
 │   ├── register_admin/         # POST /api/register_admin
 │   ├── user_login/             # POST /api/user_login
@@ -258,7 +257,7 @@ truth.
 **Error responses:** `400` (missing/invalid fields) · `409` (ticket id
 collision) · `500` (DB error / config error).
 
-### GET `/api/get_ticket` (alias `/api/get_tickets`) — Get tickets by email
+### GET `/api/get_ticket` — Get tickets by email
 
 | Parameter  | Required | Description                  |
 |------------|----------|------------------------------|

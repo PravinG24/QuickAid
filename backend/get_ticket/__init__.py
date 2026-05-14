@@ -5,7 +5,7 @@ from azure.cosmos import CosmosClient, exceptions
 import os
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info("get_tickets function triggered.")
+    logging.info("get_ticket function triggered.")
 
     # ── Get & validate email query param ────────────────────────────────────
     email = req.params.get("email", "").strip().lower()
