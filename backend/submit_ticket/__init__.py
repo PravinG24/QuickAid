@@ -2,68 +2,9 @@ import azure.functions as func
 import logging
 import json
 import os
+import base64
 from datetime import datetime, timezone
-
 from azure.cosmos import CosmosClient, exceptions
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-
-from shared.secrets import get_secret
-
-
-def _send_confirmation_email(
-    *,
-    to_email: str,
-    ticket_id: str,
-    title: str,
-    category: str,
-) -> None:
-    """Send a SendGrid confirmation email for a freshly submitted ticket.
-
-    Email failures are logged and swallowed so they never roll back the
-    persisted ticket — the ticket exists in Cosmos and is the source of
-    truth.
-    """
-    try:
-        sendgrid_key = get_secret("SendGridApiKey", env_fallback="SENDGRID_API_KEY")
-        from_email = os.environ.get("SENDGRID_FROM_EMAIL", "").strip()
-        if not from_email:
-            logging.error(
-                "SENDGRID_FROM_EMAIL is not configured; skipping email for %s",
-                ticket_id,
-            )
-            return
-
-        message = Mail(
-            from_email=from_email,
-            to_emails=to_email,
-            subject=f"QuickAid: ticket {ticket_id} received",
-            html_content=(
-                f"<p>Hi,</p>"
-                f"<p>Your QuickAid ticket <b>{ticket_id}</b> has been received "
-                f"and is now <b>Open</b>.</p>"
-                f"<p><b>Title:</b> {title}<br/>"
-                f"<b>Category:</b> {category}</p>"
-                f"<p>Our team will review it shortly. You can check the status "
-                f"at any time using the QuickAid portal.</p>"
-                f"<p>— The QuickAid Team</p>"
-            ),
-        )
-        response = SendGridAPIClient(sendgrid_key).send(message)
-        logging.info(
-            "Confirmation email queued for ticket %s to %s (status=%s).",
-            ticket_id,
-            to_email,
-            response.status_code,
-        )
-    except Exception as exc:
-        logging.error(
-            "SendGrid send failed for ticket %s -> %s: %s",
-            ticket_id,
-            to_email,
-            exc,
-        )
-
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("submit_ticket function triggered.")
@@ -104,20 +45,69 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
-    # ── Connect to Cosmos DB (key sourced from Key Vault when configured) ───
-    try:
-        cosmos_key = get_secret("CosmosPrimaryKey", env_fallback="COSMOS_KEY")
-    except RuntimeError as exc:
-        logging.error("Cosmos credential unavailable: %s", exc)
-        return func.HttpResponse(
-            json.dumps({"error": "Server configuration error."}),
-            status_code=500,
-            mimetype="application/json"
-        )
+    # ── Handle optional image ────────────────────────────────────────────────
+    image_data     = None
+    image_filename = None
+    image_mimetype = None
 
-    client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
-    database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
-    container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
+    if "image" in body and body["image"]:
+        try:
+            image_info = body["image"]
+
+            # Validate required image fields
+            if not isinstance(image_info, dict):
+                return func.HttpResponse(
+                    json.dumps({"error": "Image must be an object with 'filename', 'mimetype' and 'data' fields."}),
+                    status_code=400,
+                    mimetype="application/json"
+                )
+
+            image_filename = image_info.get("filename", "").strip()
+            image_mimetype = image_info.get("mimetype", "").strip()
+            image_base64   = image_info.get("data", "").strip()
+
+            if not image_filename or not image_mimetype or not image_base64:
+                return func.HttpResponse(
+                    json.dumps({"error": "Image must include 'filename', 'mimetype' and 'data' fields."}),
+                    status_code=400,
+                    mimetype="application/json"
+                )
+
+            # Validate mimetype
+            allowed_mimetypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+            if image_mimetype not in allowed_mimetypes:
+                return func.HttpResponse(
+                    json.dumps({"error": f"Invalid image type. Allowed types: jpeg, png, gif, webp"}),
+                    status_code=400,
+                    mimetype="application/json"
+                )
+
+            # Validate base64
+            base64.b64decode(image_base64, validate=True)
+
+            # Validate image size (max 1MB after base64 decode)
+            image_bytes = base64.b64decode(image_base64)
+            max_size    = 1 * 1024 * 1024  # 1MB
+            if len(image_bytes) > max_size:
+                return func.HttpResponse(
+                    json.dumps({"error": "Image size must be less than 1MB."}),
+                    status_code=400,
+                    mimetype="application/json"
+                )
+
+            image_data = image_base64
+
+        except Exception:
+            return func.HttpResponse(
+                json.dumps({"error": "Invalid image data. Must be a valid base64 encoded string."}),
+                status_code=400,
+                mimetype="application/json"
+            )
+
+    # ── Connect to Cosmos DB ─────────────────────────────────────────────────
+    client    = CosmosClient.from_connection_string(os.environ["COSMOS_CONNECTION_STRING"])
+    database  = client.get_database_client(os.environ["COSMOS_DATABASE_NAME"])
+    container = database.get_container_client(os.environ["COSMOS_CONTAINER_NAME"])
 
     # ── Generate TCKT-XX ID ──────────────────────────────────────────────────
     count_query  = "SELECT VALUE COUNT(1) FROM c WHERE c.type = 'ticket'"
@@ -139,9 +129,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "description": description,
         "category":    category,
         "status":      "Open",
+        "priority":    "Low",           # ← default priority
+        "hasImage":    image_data is not None,
         "createdAt":   now.isoformat(),
         "updatedAt":   now.isoformat(),
     }
+
+    # ── Add image if provided ────────────────────────────────────────────────
+    if image_data:
+        ticket["image"] = {
+            "filename": image_filename,
+            "mimetype": image_mimetype,
+            "data":     image_data      # base64 encoded
+        }
 
     # ── Write to Cosmos DB ───────────────────────────────────────────────────
     try:
@@ -168,14 +168,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
 
-    # ── Send confirmation email (non-blocking on failure) ────────────────────
-    _send_confirmation_email(
-        to_email=email,
-        ticket_id=ticket_id,
-        title=title,
-        category=category,
-    )
-
     # ── Success ──────────────────────────────────────────────────────────────
     return func.HttpResponse(
         json.dumps({
@@ -183,6 +175,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "ticketId":  ticket_id,
             "type":      "ticket",
             "status":    "Open",
+            "priority":  "Low",
+            "hasImage":  image_data is not None,
             "createdAt": now.isoformat()
         }),
         status_code=201,
