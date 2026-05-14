@@ -23,6 +23,20 @@
   white-space: pre-wrap;
 }
 
+.ticket-image-preview {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ticket-image-preview img {
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #f7faff;
+}
+
 .ticket-page-head {
   display: flex;
   align-items: center;

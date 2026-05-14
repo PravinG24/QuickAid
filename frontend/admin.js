@@ -1868,6 +1868,8 @@ function normalizeAdminTicket(ticket) {
     priority: source.priority || "Medium",
     status: normalizedStatus || "Open",
     assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || "Unassigned",
+    hasImage: Boolean(source.hasImage || source.image),
+    image: source.image || null,
     comments: Array.isArray(source.comments) ? source.comments : [],
     timeline: Array.isArray(source.timeline) ? source.timeline : [],
     created_at: createdAt,

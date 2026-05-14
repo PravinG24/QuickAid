@@ -357,9 +357,8 @@
               <small class="error" id="descriptionError"></small>
             </label>
 
-            <!-- Extra frontend-only function disabled: backend does not persist attachments yet.
-            <label class="field field-wide mobile-only attachment-field hidden">
-              <span>Attach images (Optional)</span>
+            <label class="field field-wide attachment-field">
+              <span>Attach image (Optional)</span>
               <div class="attachment-dropzone" id="attachmentDropzone" role="button" tabindex="0" aria-label="Upload attachment">
                 <div class="dropzone-icon" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -368,16 +367,15 @@
                   </svg>
                 </div>
                 <div class="dropzone-text">
-                  <strong>Click</strong> to upload screenshots or photos
-                  <div class="dropzone-subtitle">PNG, JPG, GIF up to 10MB each (max 5 files)</div>
+                  <strong>Click</strong> to upload a screenshot or photo
+                  <div class="dropzone-subtitle">PNG, JPG, GIF, or WEBP up to 1MB</div>
                 </div>
               </div>
-              <input id="attachment" name="attachment" type="file" class="attachment-input" accept=".png,.jpg,.jpeg,.gif" multiple />
+              <input id="attachment" name="attachment" type="file" class="attachment-input" accept=".png,.jpg,.jpeg,.gif,.webp,image/png,image/jpeg,image/gif,image/webp" />
               <small class="error" id="attachmentError"></small>
               <small class="helper" id="attachmentInfo"></small>
               <div class="attachment-preview hidden" id="attachmentPreview" aria-live="polite"></div>
             </label>
-            -->
 
             <label class="field field-wide checkbox-field hidden">
               <span class="checkbox-row">

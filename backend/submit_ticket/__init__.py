@@ -105,9 +105,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
 
     # ── Connect to Cosmos DB ─────────────────────────────────────────────────
-    client    = CosmosClient.from_connection_string(os.environ["COSMOS_CONNECTION_STRING"])
-    database  = client.get_database_client(os.environ["COSMOS_DATABASE_NAME"])
-    container = database.get_container_client(os.environ["COSMOS_CONTAINER_NAME"])
+    client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+    database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
+    container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 
     # ── Generate TCKT-XX ID ──────────────────────────────────────────────────
     count_query  = "SELECT VALUE COUNT(1) FROM c WHERE c.type = 'ticket'"
@@ -130,7 +130,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "category":    category,
         "priority":    "Medium",
         "status":      "Open",
-        "priority":    "Low",           # ← default priority
         "hasImage":    image_data is not None,
         "createdAt":   now.isoformat(),
         "updatedAt":   now.isoformat(),
@@ -176,7 +175,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "ticketId":  ticket_id,
             "type":      "ticket",
             "status":    "Open",
-            "priority":  "Low",
+            "priority":  "Medium",
             "hasImage":  image_data is not None,
             "createdAt": now.isoformat()
         }),

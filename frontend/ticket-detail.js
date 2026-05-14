@@ -90,6 +90,69 @@ function normalizeDetailTicket(source) {
   };
 }
 
+function getTicketAttachments(ticket) {
+  const existing = Array.isArray(ticket.attachments) ? ticket.attachments : [];
+  const image = ticket.image;
+  if (!image || !image.data || !image.mimetype) return existing;
+  return [
+    ...existing,
+    {
+      name: image.filename || "ticket-image",
+      type: image.mimetype,
+      size: Math.ceil((String(image.data || "").length * 3) / 4),
+      data: image.data,
+      isStoredImage: true,
+    },
+  ];
+}
+
+function getAttachmentDataUrl(file) {
+  if (!file || !file.data || !file.type) return "";
+  return `data:${String(file.type)};base64,${String(file.data)}`;
+}
+
+function getAttachmentBlobUrl(file) {
+  if (!file || !file.data || !file.type) return "";
+  const binary = atob(String(file.data));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: String(file.type) });
+  return URL.createObjectURL(blob);
+}
+
+function getSafeAttachmentName(name, index) {
+  const fallback = `attachment_${index + 1}`;
+  return String(name || fallback).replace(/[\\/:*?"<>|]+/g, "_");
+}
+
+function viewAttachment(file) {
+  const blobUrl = getAttachmentBlobUrl(file);
+  if (!blobUrl) return;
+  const opened = window.open(blobUrl, "_blank", "noopener,noreferrer");
+  
+  setTimeout(() => {
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
+      alert("Popup may have been blocked.");
+    }
+  }, 500);
+  
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60 * 1000);
+}
+
+function downloadAttachment(file, index) {
+  const blobUrl = getAttachmentBlobUrl(file);
+  if (!blobUrl) return;
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = getSafeAttachmentName(file.name, index);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
 function saveCachedTickets(tickets) {
   localStorage.setItem(ticketCacheStorageKey, JSON.stringify(Array.isArray(tickets) ? tickets : []));
 }
@@ -155,7 +218,7 @@ function renderTicket(ticket) {
   createdAt.textContent = formatDateTime(ticket.created_at || ticket.submitted_at);
   updatedAt.textContent = formatDateTime(ticket.updated_at || ticket.submitted_at);
 
-  const atts = Array.isArray(ticket.attachments) ? ticket.attachments : [];
+  const atts = getTicketAttachments(ticket);
   if (attachmentTitle) attachmentTitle.textContent = `Attachments (${atts.length})`;
   attachments.innerHTML = "";
   if (!atts.length) {
@@ -169,6 +232,14 @@ function renderTicket(ticket) {
       li.className = "attachment-item";
       const sizeKb = Math.ceil(Number(file.size || 0) / 1024);
       const isImage = String(file.type || "").startsWith("image/");
+      const dataUrl = getAttachmentDataUrl(file);
+      const canOpenAttachment = Boolean(file.isStoredImage && dataUrl);
+      const previewHtml =
+        canOpenAttachment
+          ? `<div class="attachment-item-preview"><img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(
+              file.name || `attachment_${idx + 1}`
+            )}" /></div>`
+          : `<div class="attachment-item-preview muted">${isImage ? "Image preview unavailable." : "File preview unavailable."}</div>`;
       li.innerHTML = `
         <div class="attachment-item-head">
           <div class="attachment-item-meta">
@@ -176,12 +247,16 @@ function renderTicket(ticket) {
             <span class="muted">${isImage ? "Image" : "File"} · ${sizeKb} KB</span>
           </div>
           <div class="attachment-item-actions">
-            <button type="button" class="ghost" disabled>View</button>
-            <button type="button" class="ghost" disabled>Download</button>
+            <button type="button" class="ghost" data-attachment-action="view" ${canOpenAttachment ? "" : "disabled"}>View</button>
+            <button type="button" class="ghost" data-attachment-action="download" ${canOpenAttachment ? "" : "disabled"}>Download</button>
           </div>
         </div>
-        <div class="attachment-item-preview muted">${isImage ? "Image preview available after backend/file storage integration." : "File preview unavailable."}</div>
+        ${previewHtml}
       `;
+      const viewButton = li.querySelector('[data-attachment-action="view"]');
+      const downloadButton = li.querySelector('[data-attachment-action="download"]');
+      viewButton?.addEventListener("click", () => viewAttachment(file, idx));
+      downloadButton?.addEventListener("click", () => downloadAttachment(file, idx));
       attachments.appendChild(li);
     });
   }

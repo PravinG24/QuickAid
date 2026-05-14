@@ -298,12 +298,14 @@ function ticketMatchesCategoryFilter(ticket, filterValue) {
 
 // modify from frontend: submit_ticket requires title/category; UI keeps subject/department for display.
 function toBackendTicketPayload(payload) {
-  return {
+  const backendPayload = {
     email: payload.email,
     title: payload.subject,
     description: payload.description,
     category: toBackendCategory(payload.category || payload.department || payload.request_type),
   };
+  if (payload.image) backendPayload.image = payload.image;
+  return backendPayload;
 }
 
 function validateTicketPayload(payload) {
@@ -1011,60 +1013,66 @@ function openProfileModal() {
 */
 
 function validateAttachment() {
-  // Backend-first mode: attachment upload is disabled until backend has file storage.
-  return true;
-}
-
-/* Extra frontend-only function disabled: backend does not persist attachments yet.
-function validateAttachment() {
-  // Extra frontend-only attachment upload is disabled until backend has file storage.
   if (!attachmentInput || !attachmentInfo) return true;
   setFieldError("attachment", "");
   attachmentInfo.textContent = "";
-  if (attachmentPreview) attachmentPreview.classList.add("hidden");
-  const files = Array.from(attachmentInput.files || []);
-  if (!files.length) {
-    if (attachmentPreview) attachmentPreview.innerHTML = "";
-    return true;
-  }
-  if (files.length > 5) {
-    setFieldError("attachment", "You can attach up to 5 files total.");
-    return false;
-  }
-  const maxBytes = 10 * 1024 * 1024; // Screenshot: up to 10MB
-  const oversize = files.find((file) => file.size > maxBytes);
-  if (oversize) {
-    setFieldError("attachment", "Each attachment must be 10 MB or smaller.");
-    return false;
-  }
-  const fileSummary = files
-    .map((file) => `${file.name} (${Math.ceil(file.size / 1024)} KB)`)
-    .join(", ");
-  attachmentInfo.textContent = `Attached (${files.length}/5): ${fileSummary}`;
-
   if (attachmentPreview) {
-    const imageFiles = files.filter((file) => String(file.type || "").startsWith("image/"));
-    if (imageFiles.length) {
-      const reader = new FileReader();
-      const first = imageFiles[0];
-      reader.onload = () => {
-        attachmentPreview.innerHTML = `
-          <img src="${String(reader.result)}" alt="Attachment preview" />
-          <div class="filemeta">${escapeHtml(first.name)}${
-            files.length > 1 ? ` (+${files.length - 1} more)` : ""
-          }</div>
-        `;
-        attachmentPreview.classList.remove("hidden");
-      };
-      reader.readAsDataURL(first);
-    } else {
-      attachmentPreview.innerHTML = `<div class="filemeta">${escapeHtml(files.length)} file(s) selected</div>`;
+    attachmentPreview.classList.add("hidden");
+    attachmentPreview.innerHTML = "";
+  }
+  const files = Array.from(attachmentInput.files || []);
+  if (!files.length) return true;
+  if (files.length > 1) {
+    setFieldError("attachment", "Attach one image only.");
+    return false;
+  }
+  const file = files[0];
+  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (!allowedTypes.includes(String(file.type || ""))) {
+    setFieldError("attachment", "Image must be JPEG, PNG, GIF, or WEBP.");
+    return false;
+  }
+  const maxBytes = 1 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    setFieldError("attachment", "Image must be smaller than 1MB.");
+    return false;
+  }
+  attachmentInfo.textContent = `Selected: ${file.name} (${Math.ceil(file.size / 1024)} KB)`;
+  if (attachmentPreview) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      attachmentPreview.innerHTML = `
+        <img src="${String(reader.result)}" alt="Attachment preview" />
+        <div class="filemeta">${escapeHtml(file.name)}</div>
+      `;
       attachmentPreview.classList.remove("hidden");
-    }
+    };
+    reader.readAsDataURL(file);
   }
   return true;
 }
-*/
+
+function readImageForBackend(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Unable to read selected image."));
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      const commaIndex = dataUrl.indexOf(",");
+      const data = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+      resolve({
+        filename: file.name,
+        mimetype: file.type || "application/octet-stream",
+        data,
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function replaceSelection(textarea, replacer) {
   if (!textarea) return;
@@ -1416,11 +1424,6 @@ form.addEventListener("submit", async (event) => {
     subject: sanitize(form.subject.value),
     location: sanitize(form.location.value),
     description: sanitize(form.description.value),
-    attachments: Array.from(attachmentInput?.files || []).slice(0, 5).map((file) => ({
-      name: file.name,
-      type: file.type || "application/octet-stream",
-      size: file.size,
-    })),
   };
 
   const errors = validateTicketPayload(payload);
@@ -1433,6 +1436,8 @@ form.addEventListener("submit", async (event) => {
   setTextContent(submitBtn, "Submitting...");
 
   try {
+    const selectedImage = Array.from(attachmentInput?.files || [])[0] || null;
+    if (selectedImage) payload.image = await readImageForBackend(selectedImage);
     const result = await submitTicket(payload);
     showSubmittedTicketTemporarily(result, payload.email);
     showSubmitResult(
@@ -1581,7 +1586,6 @@ if (subjectInput) subjectInput.addEventListener("input", () => {
 // Extra frontend-only knowledge-base feedback is disabled until backend has KB routes.
 // kbList?.addEventListener("click", handleKbFeedbackVote);
 // kbPageList?.addEventListener("click", handleKbFeedbackVote);
-/* Extra frontend-only function disabled: attachments have no backend route yet.
 if (attachmentInput) attachmentInput.addEventListener("change", validateAttachment);
 if (attachmentDropzone && attachmentInput) {
   const trigger = () => attachmentInput.click();
@@ -1593,7 +1597,6 @@ if (attachmentDropzone && attachmentInput) {
     }
   });
 }
-*/
 
 if (editorToolButtons?.length) {
   editorToolButtons.forEach((btn) => {

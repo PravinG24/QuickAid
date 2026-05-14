@@ -2323,6 +2323,14 @@ body[data-role="staff"] {
   padding: 0.6rem;
 }
 
+.attachment-item-preview img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
 .comment-bubble {
   border: 1px solid var(--line);
   border-radius: 0.85rem;

@@ -86,6 +86,20 @@ function quickAidRenderTimeline(items) {
     .join("");
 }
 
+function quickAidRenderTicketImage(ticket) {
+  const image = ticket?.image;
+  if (!image || !image.data || !image.mimetype) return "";
+  const filename = quickAidEscapeHtml(image.filename || "Ticket image");
+  const mimetype = quickAidEscapeHtml(image.mimetype);
+  const data = quickAidEscapeHtml(image.data);
+  return `
+    <div class="ticket-image-preview">
+      <img src="data:${mimetype};base64,${data}" alt="${filename}" />
+      <p class="ticket-shared-muted">${filename}</p>
+    </div>
+  `;
+}
+
 function quickAidRenderTicketDetailLayout(ticket, options = {}) {
   const safeTicket = ticket || {};
   const comments = Array.isArray(safeTicket.comments) ? safeTicket.comments : [];
@@ -117,6 +131,14 @@ function quickAidRenderTicketDetailLayout(ticket, options = {}) {
             safeTicket.description || safeTicket.issue || "No additional description provided."
           )}</p>
         </div>
+        ${
+          safeTicket.image
+            ? `<div class="ticket-section">
+          <h4>Attached image</h4>
+          ${quickAidRenderTicketImage(safeTicket)}
+        </div>`
+            : ""
+        }
       </article>
       <aside class="detail-block">
         <h3>Ticket Information</h3>
@@ -168,4 +190,5 @@ window.QuickAidTicketView = {
   renderComments: quickAidRenderComments,
   renderTimeline: quickAidRenderTimeline,
   renderTicketDetailLayout: quickAidRenderTicketDetailLayout,
+  renderTicketImage: quickAidRenderTicketImage,
 };
