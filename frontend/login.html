@@ -24,15 +24,29 @@
         <form id="loginPageForm" novalidate>
           <label class="input-shell">
             <span>Username</span>
-            <input id="loginUsername" name="username" type="text" placeholder="Example: student@campus.edu…" required autocomplete="username" spellcheck="false" />
+            <input id="loginUsername" name="username" type="text" placeholder="Example: student@campus.edu..." required autocomplete="username" spellcheck="false" />
             <small class="error" id="loginUsernameError"></small>
           </label>
 
-          <label class="input-shell">
-            <span>Password</span>
-            <input id="loginPassword" name="password" type="password" placeholder="Enter your password…" required autocomplete="current-password" />
+          <div class="input-shell">
+            <label for="loginPassword">Password</label>
+            <div class="password-field">
+              <input id="loginPassword" name="password" type="password" placeholder="Enter your password..." required autocomplete="current-password" />
+              <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" data-password-toggle="loginPassword">
+                <svg class="eye-icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 3 18 18"></path>
+                  <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2"></path>
+                  <path d="M7.3 7.7C4.3 9.3 2.5 12 2.5 12s3.5 6 9.5 6c1.7 0 3.2-.5 4.5-1.2"></path>
+                  <path d="M13.9 6.2C18.7 7 21.5 12 21.5 12a16.5 16.5 0 0 1-2.1 2.7"></path>
+                </svg>
+              </button>
+            </div>
             <small class="error" id="loginPasswordError"></small>
-          </label>
+          </div>
 
           <button type="submit" class="signin-btn">Sign In</button>
 

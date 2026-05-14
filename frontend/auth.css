@@ -614,6 +614,12 @@ label {
   position: relative;
 }
 
+.input-shell {
+  display: grid;
+  gap: 0.35rem;
+  position: relative;
+}
+
 input,
 select,
 button,
@@ -629,6 +635,66 @@ select {
   min-height: 44px;
   background-color: oklch(99% 0.004 248);
   color: var(--text);
+}
+
+.password-field {
+  position: relative;
+  display: grid;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  width: 2.2rem;
+  min-height: 2.2rem;
+  height: 2.2rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.password-toggle:hover {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.password-toggle:active {
+  transform: translateY(-50%);
+}
+
+.eye-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.password-toggle .eye-closed {
+  display: none;
+}
+
+.password-toggle.is-visible .eye-open {
+  display: none;
+}
+
+.password-toggle.is-visible .eye-closed {
+  display: block;
 }
 
 input::placeholder {

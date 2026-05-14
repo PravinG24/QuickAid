@@ -10,7 +10,7 @@ const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE
 const API_BASE_CONFIGURED = true;
 
 const authHeading = document.querySelector(".login-page .entra-panel h1");
-if (authHeading) authHeading.textContent = "Welcome back👋";
+if (authHeading) authHeading.textContent = "Welcome back";
 
 function saveSession(session) {
   localStorage.setItem(sessionKey, JSON.stringify(session));
@@ -200,6 +200,33 @@ function bindInputShell(inputEl) {
   sync();
 }
 
+function bindPasswordToggle(toggleEl) {
+  if (!toggleEl) return;
+  const inputEl = document.getElementById(toggleEl.dataset.passwordToggle || "");
+  if (!inputEl) return;
+
+  const sync = () => {
+    const isVisible = inputEl.type === "text";
+    toggleEl.classList.toggle("is-visible", isVisible);
+    toggleEl.setAttribute("aria-pressed", String(isVisible));
+    toggleEl.setAttribute("aria-label", isVisible ? "Hide password" : "Show password");
+  };
+
+  toggleEl.addEventListener("click", () => {
+    inputEl.type = inputEl.type === "password" ? "text" : "password";
+    sync();
+    inputEl.dispatchEvent(
+      new CustomEvent("password-visibility-change", {
+        detail: { isVisible: inputEl.type === "text" },
+      })
+    );
+    inputEl.focus();
+  });
+  sync();
+}
+
+document.querySelectorAll("[data-password-toggle]").forEach(bindPasswordToggle);
+
 function initCuteBear({
   bearId,
   leftEyeId,
@@ -241,8 +268,10 @@ function initCuteBear({
 
   lookInput.addEventListener("focus", lookMode);
   lookInput.addEventListener("blur", normalMode);
-  passwordInput.addEventListener("focus", hideMode);
-  passwordInput.addEventListener("blur", normalMode);
+  passwordInput.addEventListener("password-visibility-change", (event) => {
+    if (event.detail?.isVisible) hideMode();
+    else normalMode();
+  });
 
   document.addEventListener("mousemove", (e) => {
     if (!isLooking) return;
