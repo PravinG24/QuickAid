@@ -570,6 +570,10 @@ function apiHeaders(extra = {}) {
   const headers = { ...extra };
   const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
   if (functionKey) headers["x-functions-key"] = functionKey;
+
+  const sessionToken = String(session?.token || "").trim();
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
+
   return headers;
 }
 

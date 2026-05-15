@@ -5,8 +5,19 @@ import os
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 
+from shared.secrets import get_secret
+from shared.admin_auth import authorize_admin_request
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("update_ticket function triggered.")
+
+    payload, auth_type, error_message = authorize_admin_request(req)
+    if not payload:
+        return func.HttpResponse(
+            json.dumps({"error": error_message or "Unauthorized."}),
+            status_code=401,
+            mimetype="application/json",
+        )
 
     # ── Get ticket ID from route ─────────────────────────────────────────────
     ticket_id = req.route_params.get("ticketId", "").strip()
@@ -70,7 +81,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # ── Connect to Cosmos DB ─────────────────────────────────────────────────
     try:
-        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+        cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
+        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
         database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
         container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 

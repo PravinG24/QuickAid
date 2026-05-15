@@ -25,7 +25,7 @@ PRIORITY_ALIASES = {
 
 
 def get_container():
-    cosmos_key = get_secret("CosmosPrimaryKey", env_fallback="COSMOS_KEY")
+    cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
     client = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
     database = client.get_database_client(os.environ["COSMOS_DATABASE"])
     return database.get_container_client(os.environ["COSMOS_CONTAINER"])

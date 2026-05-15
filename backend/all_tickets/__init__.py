@@ -4,9 +4,20 @@ import json
 from azure.cosmos import CosmosClient, exceptions
 import os
 
+from shared.secrets import get_secret
+from shared.admin_auth import authorize_admin_request
+
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("get_all_tickets function triggered.")
+
+    payload, auth_type, error_message = authorize_admin_request(req)
+    if not payload:
+        return func.HttpResponse(
+            json.dumps({"error": error_message or "Unauthorized."}),
+            status_code=401,
+            mimetype="application/json",
+        )
 
     # ── Optional filters from query params ──────────────────────────────────
     status_filter   = req.params.get("status", "").strip()
@@ -33,7 +44,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # ── Connect to Cosmos DB ─────────────────────────────────────────────────
     try:
-        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+        cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
+        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
         database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
         container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 
@@ -66,9 +78,29 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     ]
 
     # ── Return response ──────────────────────────────────────────────────────
+    # ── Calculate metrics ───────────────────────────────────────────────────────
+    status_counts = {}
+    category_counts = {}
+    priority_counts = {}
+    
+    for ticket in items:
+        status = ticket.get("status", "Unknown")
+        category = ticket.get("category", "Unknown")
+        priority = ticket.get("priority", "Unknown")
+        
+        status_counts[status] = status_counts.get(status, 0) + 1
+        category_counts[category] = category_counts.get(category, 0) + 1
+        priority_counts[priority] = priority_counts.get(priority, 0) + 1
+    
+    # ── Return response with metrics ──────────────────────────────────────────
     return func.HttpResponse(
         json.dumps({
             "totalCount": len(tickets),
+            "metrics": {
+                "byStatus": status_counts,
+                "byCategory": category_counts,
+                "byPriority": priority_counts
+            },
             "filters": {
                 "status":   status_filter   or None,
                 "category": category_filter or None,

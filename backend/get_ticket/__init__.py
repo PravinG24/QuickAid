@@ -4,6 +4,8 @@ import json
 from azure.cosmos import CosmosClient, exceptions
 import os
 
+from shared.secrets import get_secret
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("get_ticket function triggered.")
 
@@ -44,7 +46,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     # ── Query Cosmos DB ──────────────────────────────────────────────────────
     try:
-        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+        cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
+        client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
         database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
         container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 

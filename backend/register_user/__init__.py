@@ -63,7 +63,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Connect to Cosmos DB ─────────────────────────────────────────────────
-    client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=os.environ["COSMOS_KEY"])
+    cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
+    client    = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
     database  = client.get_database_client(os.environ["COSMOS_DATABASE"])
     container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 

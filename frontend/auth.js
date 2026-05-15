@@ -12,6 +12,12 @@ const API_BASE_CONFIGURED = true;
 const authHeading = document.querySelector(".login-page .entra-panel h1");
 if (authHeading) authHeading.textContent = "Welcome back";
 
+const ENTRA_TENANT_ID = String(window.QUICKAID_ENTRA_TENANT_ID || "").trim();
+const ENTRA_CLIENT_ID = String(window.QUICKAID_ENTRA_CLIENT_ID || "").trim();
+const ENTRA_API_SCOPE = String(window.QUICKAID_ENTRA_API_SCOPE || "").trim();
+const ENTRA_REDIRECT_URI = String(window.QUICKAID_ENTRA_REDIRECT_URI || `${window.location.origin}/login.html`).trim();
+let entraMsalInstance = null;
+
 function saveSession(session) {
   localStorage.setItem(sessionKey, JSON.stringify(session));
 }
@@ -85,6 +91,99 @@ function toDashboard(session) {
   window.location.href = role === "admin" ? "./admin.html" : "./dashboard.html";
 }
 
+function getEntraAdminScope() {
+  if (!ENTRA_API_SCOPE) {
+    throw new Error("Microsoft sign-in is not configured yet.");
+  }
+  return ENTRA_API_SCOPE;
+}
+
+function getEntraMsalInstance() {
+  if (!window.msal?.PublicClientApplication) {
+    throw new Error("Microsoft sign-in is unavailable. Reload the page or try again later.");
+  }
+  if (!ENTRA_TENANT_ID || !ENTRA_CLIENT_ID) {
+    throw new Error("Microsoft sign-in is not configured yet.");
+  }
+  if (!entraMsalInstance) {
+    entraMsalInstance = new window.msal.PublicClientApplication({
+      auth: {
+        clientId: ENTRA_CLIENT_ID,
+        authority: `https://login.microsoftonline.com/${ENTRA_TENANT_ID}`,
+        redirectUri: ENTRA_REDIRECT_URI,
+        navigateToLoginRequestUrl: false,
+      },
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false,
+      },
+    });
+  }
+  return entraMsalInstance;
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return {};
+  const parts = token.split(".");
+  if (parts.length < 2) return {};
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+function getTokenRoles(claims) {
+  const rawRoles = claims?.roles ?? claims?.role;
+  if (Array.isArray(rawRoles)) return rawRoles.map((item) => String(item || "").trim()).filter(Boolean);
+  if (typeof rawRoles === "string" && rawRoles.trim()) return [rawRoles.trim()];
+  return [];
+}
+
+function getTokenEmail(claims, account) {
+  return normalizeEmail(claims?.preferred_username || claims?.email || claims?.upn || account?.username || "");
+}
+
+function getTokenName(claims, account, email) {
+  return String(claims?.name || account?.name || email || "Microsoft User").trim();
+}
+
+function isAdminRoleClaim(claims) {
+  return getTokenRoles(claims).some((role) => String(role).toLowerCase() === "admin");
+}
+
+async function loginWithMicrosoftAdmin() {
+  const msalInstance = getEntraMsalInstance();
+  const scope = getEntraAdminScope();
+  const loginResult = await msalInstance.loginPopup({
+    scopes: ["openid", "profile", "email", scope],
+  });
+  const account = loginResult.account || msalInstance.getAllAccounts()[0] || null;
+  const tokenResult = await msalInstance.acquireTokenSilent({
+    account,
+    scopes: [scope],
+  }).catch(async () => msalInstance.acquireTokenPopup({ account, scopes: [scope] }));
+  const claims = decodeJwtPayload(tokenResult.accessToken || tokenResult.idToken || "");
+  if (!isAdminRoleClaim(claims)) {
+    throw new Error("Your account does not have the Admin app role.");
+  }
+  const email = getTokenEmail(claims, account);
+  const name = getTokenName(claims, account, email);
+  const session = {
+    email,
+    role: "admin",
+    name,
+    token: tokenResult.accessToken || tokenResult.idToken || loginResult.idToken || "",
+    provider: "entra",
+    prefs: { notifEmail: true, notifInApp: true },
+  };
+  saveSession(session);
+  toDashboard(session);
+}
+
 async function apiPost(path, payload) {
   const headers = { "Content-Type": "application/json" };
   const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
@@ -126,6 +225,7 @@ function sessionFromBackend(data, fallback = {}) {
     email: normalizeEmail(data?.email || fallback.email),
     role: normalizeRole(data?.role || fallback.role || "user"),
     name: data?.name || fallback.name || "Portal User",
+    token: data?.token || fallback.token || "",
     prefs: { notifEmail: true, notifInApp: true },
   };
 }
@@ -339,10 +439,15 @@ if (loginForm) {
     }
   });
 
-  // Extra frontend-only Microsoft demo auth is disabled until backend supports Entra ID.
-  // loginMicrosoftBtn?.addEventListener("click", () => {
-  //   handleMicrosoftAuth("user");
-  // });
+  loginMicrosoftBtn?.addEventListener("click", async () => {
+    setError("loginUsernameError", "");
+    setError("loginPasswordError", "");
+    try {
+      await loginWithMicrosoftAdmin();
+    } catch (error) {
+      setError("loginPasswordError", error.message || "Microsoft sign-in failed.");
+    }
+  });
 }
 
 const registerForm = document.getElementById("registerPageForm");

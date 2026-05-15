@@ -11,8 +11,14 @@
 
     "KEY_VAULT_URL":       "",
     "PASSWORD_SECRET":     "<dev-only-pepper-or-leave-empty-when-using-Key-Vault>",
+    "JWT_SECRET":          "<dev-only-jwt-secret-or-leave-empty-when-using-Key-Vault>",
     "SENDGRID_API_KEY":    "<dev-only-sendgrid-api-key-or-leave-empty-when-using-Key-Vault>",
-    "SENDGRID_FROM_EMAIL": "<verified-sender@yourdomain.com>"
+    "SENDGRID_FROM_EMAIL": "<verified-sender@yourdomain.com>",
+
+    "ADMIN_AUTH_MODE":     "mixed",
+    "ENTRA_TENANT_ID":     "<your-entra-tenant-id>",
+    "ENTRA_AUDIENCE":      "<your-api-app-id-uri-or-client-id>",
+    "ENTRA_REQUIRED_ROLE": "Admin"
   },
   "Host": {
     "LocalHttpPort": 7071,
