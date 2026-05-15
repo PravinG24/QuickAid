@@ -42,7 +42,7 @@ jobs:
           echo "scm_pass=$SCM_PASS" >> $GITHUB_OUTPUT
           echo "scm_url=$SCM_URL" >> $GITHUB_OUTPUT
 
-          - name: Debug publish profile parsing
+      - name: Debug publish profile parsing
         env:
           PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
         run: |
