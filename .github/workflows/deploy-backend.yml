@@ -25,9 +25,27 @@ jobs:
           cd backend
           pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
-      - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
-          package: ./backend
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+      - name: Zip backend package
+        run: |
+          cd backend
+          zip -r ../backend.zip .
+          
+      - name: Extract SCM credentials from publish profile
+        id: scm
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        run: |
+          SCM_USER=$(echo "$PUBLISH_PROFILE" | grep -o 'userName="[^"]*"' | head -1 | cut -d'"' -f2)
+          SCM_PASS=$(echo "$PUBLISH_PROFILE" | grep -o 'userPWD="[^"]*"' | head -1 | cut -d'"' -f2)
+          SCM_URL=$(echo "$PUBLISH_PROFILE" | grep -o 'publishUrl="[^"]*scm[^"]*"' | head -1 | cut -d'"' -f2)
+          echo "scm_user=$SCM_USER" >> $GITHUB_OUTPUT
+          echo "scm_pass=$SCM_PASS" >> $GITHUB_OUTPUT
+          echo "scm_url=$SCM_URL" >> $GITHUB_OUTPUT
+
+      - name: Deploy via zipdeploy
+        run: |
+          curl -X POST \
+            --fail \
+            --user "${{ steps.scm.outputs.scm_user }}:${{ steps.scm.outputs.scm_pass }}" \
+            --data-binary @backend.zip \
+            "https://${{ steps.scm.outputs.scm_url }}/api/zipdeploy?isAsync=false"
