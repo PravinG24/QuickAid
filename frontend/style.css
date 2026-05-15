@@ -1368,13 +1368,7 @@ textarea:focus
   justify-content: center;
   background: #e3e9f7;
   color: var(--primary-strong);
-  font-size: 0;
-}
-
-.from-avatar::before {
-  content: "QA";
   font-size: 0.68rem;
-  font-weight: 700;
 }
 
 .message-toolbar .tool-btn {

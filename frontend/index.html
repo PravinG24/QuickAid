@@ -61,72 +61,198 @@
         </div>
 
         <div class="hero-visual">
-          <div class="dashboard-card">
-            <div class="card-header">
-              <div class="dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <h3>Active Tickets</h3>
-            </div>
-            <div class="card-body">
-              <div class="stats-grid">
-                <div class="stat">
-                  <span class="stat-label">Open</span>
-                  <strong class="stat-value">24</strong>
-                </div>
-                <div class="stat">
-                  <span class="stat-label">In Progress</span>
-                  <strong class="stat-value">12</strong>
-                </div>
-                <div class="stat">
-                  <span class="stat-label">Resolved Today</span>
-                  <strong class="stat-value">18</strong>
-                </div>
-              </div>
-              
-              <div class="ticket-list">
-                <div class="ticket-item high-priority">
-                  <div class="ticket-info">
-                    <span class="ticket-id">TKT-2026-001</span>
-                    <span class="ticket-title">Student portal access issue</span>
+          <div class="dashboard-card" aria-label="QuickAid system introduction">
+            <div class="flash-card-stack">
+              <article class="flash-card-panel">
+                <div class="card-header">
+                  <div class="dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
-                  <span class="priority-badge high">High</span>
+                  <h3>My Ticket Summary</h3>
                 </div>
-                <div class="ticket-item medium-priority">
-                  <div class="ticket-info">
-                    <span class="ticket-id">TKT-2026-002</span>
-                    <span class="ticket-title">Facilities maintenance request</span>
+                <div class="card-body page-summary">
+                  <div class="summary-sidebar">
+                    <span class="summary-brand-dot"></span>
+                    <span class="summary-nav active"></span>
+                    <span class="summary-nav"></span>
+                    <span class="summary-nav short"></span>
                   </div>
-                  <span class="priority-badge medium">Medium</span>
-                </div>
-                <div class="ticket-item">
-                  <div class="ticket-info">
-                    <span class="ticket-id">TKT-2026-003</span>
-                    <span class="ticket-title">Software license renewal</span>
+                  <div class="summary-content">
+                    <div class="summary-topbar">
+                      <div>
+                        <span class="summary-kicker">Student panel</span>
+                        <strong>My Tickets</strong>
+                      </div>
+                      <span class="summary-action">+ New Ticket</span>
+                    </div>
+                    <div class="summary-metrics">
+                      <span><b>3</b> Open</span>
+                      <span><b>2</b> In Progress</span>
+                      <span><b>8</b> Resolved</span>
+                    </div>
+                    <div class="summary-track-form">
+                      <span>student@email.edu</span>
+                      <strong>Find Tickets</strong>
+                    </div>
+                    <div class="summary-filter-row">
+                      <span class="summary-search">Search tickets</span>
+                      <span class="summary-select">All Categories</span>
+                    </div>
+                    <div class="summary-tabs">
+                      <span class="active">All</span>
+                      <span>Open</span>
+                      <span>Resolved</span>
+                    </div>
+                    <div class="summary-split">
+                      <div class="summary-list">
+                        <div class="summary-ticket active">
+                          <span class="ticket-code">QKA-2026-104</span>
+                          <strong>Portal login issue</strong>
+                          <small>IT Support · High priority</small>
+                        </div>
+                        <div class="summary-ticket">
+                          <span class="ticket-code">QKA-2026-098</span>
+                          <strong>Air conditioner not cooling</strong>
+                          <small>Operations · In progress</small>
+                        </div>
+                      </div>
+                      <div class="summary-detail">
+                        <span class="detail-pill">In Progress</span>
+                        <strong>Assigned to IT Support</strong>
+                        <div class="detail-progress" aria-hidden="true">
+                          <span></span>
+                        </div>
+                        <div class="detail-meta-preview">
+                          <span>Category: IT</span>
+                          <span>Updated: Today</span>
+                          <span>Priority: High</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span class="priority-badge">Low</span>
                 </div>
-              </div>
+              </article>
+
+              <article class="flash-card-panel">
+                <div class="card-header">
+                  <div class="dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <h3>Submit Ticket</h3>
+                </div>
+                <div class="card-body page-summary submit-summary">
+                  <div class="summary-sidebar">
+                    <span class="summary-brand-dot"></span>
+                    <span class="summary-nav"></span>
+                    <span class="summary-nav active"></span>
+                    <span class="summary-nav short"></span>
+                  </div>
+                  <div class="summary-content">
+                    <div class="summary-topbar">
+                      <div>
+                        <span class="summary-kicker">Ticket form</span>
+                        <strong>Report a Campus Issue</strong>
+                      </div>
+                      <span class="summary-action">Draft saved</span>
+                    </div>
+                    <div class="form-preview-grid">
+                      <span class="form-field has-value">Category <b>IT</b></span>
+                      <span class="form-field has-value">Request by <b>Student</b></span>
+                      <span class="form-field wide has-line">Subject</span>
+                      <span class="form-field textarea has-lines">Description</span>
+                    </div>
+                    <div class="upload-preview">
+                      <span class="upload-icon"></span>
+                      <div>
+                        <strong>Attach image</strong>
+                        <p>PNG, JPG, GIF, or WEBP up to 1MB</p>
+                      </div>
+                    </div>
+                    <div class="summary-submit-row">
+                      <span>Priority is assigned by admin triage.</span>
+                      <strong>Create Ticket</strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="flash-card-panel">
+                <div class="card-header">
+                  <div class="dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <h3>Admin Overview</h3>
+                </div>
+                <div class="card-body page-summary admin-summary">
+                  <div class="summary-sidebar">
+                    <span class="summary-brand-dot admin"></span>
+                    <span class="summary-nav active"></span>
+                    <span class="summary-nav"></span>
+                    <span class="summary-nav short"></span>
+                  </div>
+                  <div class="summary-content">
+                    <div class="summary-topbar">
+                      <div>
+                        <span class="summary-kicker">Admin panel</span>
+                        <strong>Operations Overview</strong>
+                      </div>
+                      <span class="summary-action">Export CSV</span>
+                    </div>
+                    <div class="summary-metrics admin">
+                      <span><b>24</b> Total</span>
+                      <span><b>7</b> Urgent</span>
+                      <span><b>12</b> Assigned</span>
+                    </div>
+                    <div class="summary-visual-grid admin-visuals">
+                      <div class="visual-widget status-ring" aria-hidden="true">
+                        <span></span>
+                      </div>
+                      <div class="visual-widget activity-bars" aria-hidden="true">
+                        <span style="height: 42%"></span>
+                        <span style="height: 68%"></span>
+                        <span style="height: 54%"></span>
+                        <span style="height: 84%"></span>
+                        <span style="height: 38%"></span>
+                      </div>
+                    </div>
+                    <div class="admin-chart-row" aria-hidden="true">
+                      <span style="width: 72%"></span>
+                      <span style="width: 48%"></span>
+                      <span style="width: 86%"></span>
+                    </div>
+                    <div class="admin-board">
+                      <div class="admin-column">
+                        <span>Queue</span>
+                        <strong>Portal access blocked</strong>
+                        <small>Requester · IT · High</small>
+                      </div>
+                      <div class="admin-column">
+                        <span>Assignment</span>
+                        <strong>Operations Team</strong>
+                        <small>Facilities · Medium</small>
+                      </div>
+                      <div class="admin-column">
+                        <span>Status</span>
+                        <strong>Resolved today</strong>
+                        <small>Finance · Closed</small>
+                      </div>
+                    </div>
+                    <div class="admin-footer-preview">
+                      <span>Priority triage</span>
+                      <span>Team routing</span>
+                      <span>Status updates</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Trust Indicators -->
-      <section class="trust-indicators">
-        <div class="indicator">
-          <strong>Single unified queue</strong>
-          <span>All requests from students, staff, and faculty in one place</span>
-        </div>
-        <div class="indicator">
-          <strong>Real-time updates</strong>
-          <span>Requesters see instant status changes and team assignments</span>
-        </div>
-        <div class="indicator">
-          <strong>Enterprise-ready</strong>
-          <span>Role-based access, audit logs, and API integrations</span>
         </div>
       </section>
 
