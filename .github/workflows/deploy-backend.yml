@@ -49,3 +49,13 @@ jobs:
             --user "${{ steps.scm.outputs.scm_user }}:${{ steps.scm.outputs.scm_pass }}" \
             --data-binary @backend.zip \
             "https://${{ steps.scm.outputs.scm_url }}/api/zipdeploy?isAsync=false"
+
+      - name: Debug publish profile parsing
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        run: |
+          echo "--- RAW GREP OUTPUT ---"
+          echo "$PUBLISH_PROFILE" | grep -o 'userName="[^"]*"'
+          echo "$PUBLISH_PROFILE" | grep -o 'userPWD="[^"]*"' | head -1 | cut -c1-30  # partial only, safe
+          echo "$PUBLISH_PROFILE" | grep -o 'publishUrl="[^"]*scm[^"]*"'
+          echo "--- END ---"
