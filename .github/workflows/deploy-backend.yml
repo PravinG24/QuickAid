@@ -35,29 +35,22 @@ jobs:
         env:
           PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
         run: |
-          SCM_USER=$(echo "$PUBLISH_PROFILE" | grep -o 'userName="[^"]*"' | head -1 | cut -d'"' -f2)
+          SCM_USER=$(echo "$PUBLISH_PROFILE" | grep -o 'userName="\$[^"]*"' | head -1 | cut -d'"' -f2)
           SCM_PASS=$(echo "$PUBLISH_PROFILE" | grep -o 'userPWD="[^"]*"' | head -1 | cut -d'"' -f2)
           SCM_URL=$(echo "$PUBLISH_PROFILE" | grep -o 'publishUrl="[^"]*scm[^"]*"' | head -1 | cut -d'"' -f2)
+          
           echo "scm_user=$SCM_USER" >> $GITHUB_OUTPUT
           echo "scm_pass=$SCM_PASS" >> $GITHUB_OUTPUT
           echo "scm_url=$SCM_URL" >> $GITHUB_OUTPUT
 
-      - name: Debug publish profile parsing
-        env:
-          PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        run: |
-          echo "--- RAW GREP OUTPUT ---"
-          echo "$PUBLISH_PROFILE" | grep -o 'userName="[^"]*"'
-          echo "$PUBLISH_PROFILE" | grep -o 'userPWD="[^"]*"' | head -1 | cut -c1-30  # partial only, safe
-          echo "$PUBLISH_PROFILE" | grep -o 'publishUrl="[^"]*scm[^"]*"'
-          echo "--- END ---"
-
       - name: Deploy via zipdeploy
+        env:
+          SCM_USER: ${{ steps.scm.outputs.scm_user }}
+          SCM_PASS: ${{ steps.scm.outputs.scm_pass }}
+          SCM_URL: ${{ steps.scm.outputs.scm_url }}
         run: |
           curl -X POST \
             --fail \
-            --user "${{ steps.scm.outputs.scm_user }}:${{ steps.scm.outputs.scm_pass }}" \
+            --user "${SCM_USER}:${SCM_PASS}" \
             --data-binary @backend.zip \
-            "https://${{ steps.scm.outputs.scm_url }}/api/zipdeploy?isAsync=false"
-
-  
+            "https://${SCM_URL}/api/zipdeploy?isAsync=false"
