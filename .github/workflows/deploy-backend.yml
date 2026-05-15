@@ -48,52 +48,24 @@ jobs:
           SCM_USER: ${{ steps.scm.outputs.scm_user }}
           SCM_PASS: ${{ steps.scm.outputs.scm_pass }}
           SCM_URL: ${{ steps.scm.outputs.scm_url }}
-          FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
         run: |
-          # Strip port from SCM_URL if present
           SCM_HOST=$(echo "$SCM_URL" | sed 's/:443//')
+
+          echo "Deploying via /api/publish..."
+          STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -X POST \
+            --user "${SCM_USER}:${SCM_PASS}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @backend.zip \
+            "https://${SCM_HOST}/api/publish?RemoteBuild=false&Async=false")
           
-          echo "Trying /api/zipdeploy..."
-          STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
-            -X POST \
-            --user "${SCM_USER}:${SCM_PASS}" \
-            --data-binary @backend.zip \
-            "https://${SCM_HOST}/api/zipdeploy")
-          echo "Status: $STATUS"
-          cat /tmp/response.txt
-          
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "202" ]; then
-            echo "Deploy succeeded!"
-            exit 0
-          fi
-
-          echo "Trying /api/publish..."
-          STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
-            -X POST \
-            --user "${SCM_USER}:${SCM_PASS}" \
-            --data-binary @backend.zip \
-            "https://${SCM_HOST}/api/publish?RemoteBuild=false")
           echo "Status: $STATUS"
           cat /tmp/response.txt
 
           if [ "$STATUS" = "200" ] || [ "$STATUS" = "202" ]; then
-            echo "Deploy succeeded!"
+            echo "✅ Deploy succeeded!"
             exit 0
+          else
+            echo "❌ Deploy failed with status $STATUS"
+            exit 1
           fi
-
-          echo "Trying direct functionapp endpoint..."
-          STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
-            -X POST \
-            --user "${SCM_USER}:${SCM_PASS}" \
-            --data-binary @backend.zip \
-            "https://${FUNCTION_APP_NAME}.azurewebsites.net/api/zipdeploy")
-          echo "Status: $STATUS"
-          cat /tmp/response.txt
-
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "202" ]; then
-            echo "Deploy succeeded!"
-            exit 0
-          fi
-
-          echo "All endpoints failed"
-          exit 1
