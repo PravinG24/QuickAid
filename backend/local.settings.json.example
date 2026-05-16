@@ -18,7 +18,8 @@
     "ADMIN_AUTH_MODE":     "mixed",
     "ENTRA_TENANT_ID":     "<your-entra-tenant-id>",
     "ENTRA_AUDIENCE":      "<your-api-app-id-uri-or-client-id>",
-    "ENTRA_REQUIRED_ROLE": "Admin"
+    "ENTRA_REQUIRED_ROLE": "Admin",
+    "ENTRA_BOOTSTRAP_ADMIN_EMAIL": "admin@campus.edu"
   },
   "Host": {
     "LocalHttpPort": 7071,

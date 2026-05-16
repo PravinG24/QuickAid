@@ -139,6 +139,10 @@ const adminNotifications = [
   { id: "n3", title: "Weekly admin report is ready", time: "1h ago", read: true },
 ];
 
+function isAdminApprovalManager() {
+  return isAdminSession(session);
+}
+
 function logoutAndRedirectToLogin() {
   localStorage.removeItem(sessionKey);
   window.location.href = "./login.html";
@@ -2196,6 +2200,7 @@ function renderSupportTeams(data) {
     const role = String(req.role || "").toLowerCase();
     return role === "staff" || role === "admin";
   });
+  const approvalManagerActive = isAdminApprovalManager();
   const filtered = requests.filter((req) => {
     if (activeSupportTab === "permissions") {
       return supportRequestFilterValue === "all" ? true : String(req.status) === supportRequestFilterValue;
@@ -2218,8 +2223,9 @@ function renderSupportTeams(data) {
             activeSupportTab === "permissions" && String(req.status) === "pending"
               ? (() => {
                   const role = String(req.role || "").toLowerCase();
-                  const canReview = role !== "admin" || isSystemAdminSession(session);
-                  if (!canReview) return `<span class="sub">System admin approval required</span>`;
+                  if (role === "admin" && !approvalManagerActive) {
+                    return `<span class="sub">Sign in as an admin to review admin requests</span>`;
+                  }
                   return `<button type="button" class="link-btn approve" data-request-action="approve" data-request-id="${escapeHtml(req.id || "")}" data-request-email="${escapeHtml(req.email || "")}" data-request-role="${escapeHtml(req.role || "")}">Approve</button><button type="button" class="link-btn reject" data-request-action="reject" data-request-id="${escapeHtml(req.id || "")}" data-request-email="${escapeHtml(req.email || "")}" data-request-role="${escapeHtml(req.role || "")}">Reject</button>`;
                 })()
               : `<span class="sub">${escapeHtml(req.reviewedBy ? `Reviewed by ${req.reviewedBy}` : "No actions")}</span>`
@@ -2238,6 +2244,16 @@ function renderSupportTeams(data) {
   grid.classList.toggle("hidden", !showGroupsOverview);
   groupsPanel.classList.toggle("hidden", activeSupportTab !== "groups");
   accessPanel.classList.toggle("hidden", activeSupportTab !== "permissions");
+  if (accessPanel) {
+    accessPanel.dataset.adminMode = approvalManagerActive ? "enabled" : "disabled";
+    const head = accessPanel.querySelector(".section-head");
+    const helper = head?.querySelector(".sub");
+    if (helper) {
+      helper.textContent = approvalManagerActive
+        ? "Review pending admin and staff requests here."
+        : "Sign in as an admin to review access requests.";
+    }
+  }
   document.querySelectorAll(".support-tab[data-support-tab]").forEach((tab) => {
     const tabValue = String(tab.getAttribute("data-support-tab") || "");
     tab.classList.toggle("active", tabValue === activeSupportTab);

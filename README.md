@@ -72,6 +72,7 @@ Non-secret App Settings:
 | `COSMOS_CONTAINER`    | `Tickets`                                                 |
 | `KEY_VAULT_URL`       | `https://<vault-name>.vault.azure.net/`                   |
 | `SENDGRID_FROM_EMAIL` | A verified SendGrid sender                                |
+| `ENTRA_BOOTSTRAP_ADMIN_EMAIL` | Admin email that is auto-approved for first-login testing |
 
 `COSMOS_KEY`, `PASSWORD_SECRET`, and `SENDGRID_API_KEY` are **only** used
 as local-development fallbacks; in Azure they are resolved from Key Vault
@@ -202,12 +203,17 @@ az functionapp config appsettings set \
     COSMOS_DATABASE="QuickAidDB" \
     COSMOS_CONTAINER="Tickets" \
     KEY_VAULT_URL="https://$KV.vault.azure.net/" \
-    SENDGRID_FROM_EMAIL="<verified-sender@yourdomain.com>"
+    SENDGRID_FROM_EMAIL="<verified-sender@yourdomain.com>" \
+    ENTRA_BOOTSTRAP_ADMIN_EMAIL="admin@campus.edu"
 ```
 
 > **No raw secret values are passed here.** They live in Key Vault and
 > are pulled by `shared/secrets.py` at runtime via the Function App's
 > Managed Identity.
+
+For Entra admin testing, use an account with the `Admin` app role. If you
+want one email to bypass the approval queue during testing, set
+`ENTRA_BOOTSTRAP_ADMIN_EMAIL` to that email.
 
 ### 6. Deploy
 

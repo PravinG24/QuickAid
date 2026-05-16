@@ -18,6 +18,7 @@ These routes exist in `backend/` and are used by the frontend.
   - Request: `{ "name": string, "email": string, "password": string }`
   - Response expected by frontend: `{ "adminId": string, "name": string, "email": string, "role": "admin" }`
   - Backend route currently uses `authLevel: "function"`, so frontend must send `x-functions-key` or backend must switch to another auth approach.
+  - For Entra testing, `ENTRA_BOOTSTRAP_ADMIN_EMAIL` is auto-approved by `shared/admin_auth.py`.
 
 - [ ] `POST /api/login/admin`
   - Request: `{ "email": string, "password": string }`
