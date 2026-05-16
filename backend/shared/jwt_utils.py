@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 from shared.secrets import get_secret
+from shared.admin_auth import _verify_entra_token
 
 
 # Admin JWT creation removed: application-issued admin tokens are no longer
@@ -52,10 +53,16 @@ def verify_token(token: str) -> Optional[Dict]:
     """
     secret = get_secret("JWT-SECRET", env_fallback="JWT_SECRET")
     
+    # First try application-issued HS256 token
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:
-        return None
+        # Not a valid HS256 token; try verifying as an Entra (Azure AD) token
+        try:
+            entra_payload = _verify_entra_token(token)
+            return entra_payload
+        except Exception:
+            return None
