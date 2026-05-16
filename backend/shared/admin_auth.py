@@ -72,6 +72,21 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
         options={"verify_issuer": False},
     )
 
+    # Optional verbose debug logging (disabled by default). To enable,
+    # set `VERBOSE_AUTH_DEBUG=true` in the Function App settings (or local.settings).
+    try:
+        if str(os.environ.get("VERBOSE_AUTH_DEBUG", "")).lower() in {"1", "true", "yes"}:
+            debug_claims = {
+                "aud": payload.get("aud"),
+                "iss": payload.get("iss"),
+                "sub": payload.get("sub"),
+                "upn": payload.get("upn") or payload.get("preferred_username") or payload.get("email"),
+                "roles": payload.get("roles"),
+            }
+            logging.warning("[AuthDebug] decoded token claims: %s", debug_claims)
+    except Exception:
+        logging.exception("[AuthDebug] failed to emit debug claims")
+
     token_iss = str(payload.get("iss", "")).rstrip("/")
     tenant_id = str(os.environ.get("ENTRA_TENANT_ID", "")).strip()
     allowed_issuers = set()
@@ -81,6 +96,7 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
         allowed_issuers.add(f"https://sts.windows.net/{tenant_id}")
 
     if token_iss not in allowed_issuers:
+        logging.warning("Entra token issuer mismatch. token_iss=%s allowed=%s", token_iss, allowed_issuers)
         return None
 
     roles = payload.get("roles") or []
@@ -90,6 +106,7 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
     # normalize to lowercase for comparison
     norm_roles = [str(r).lower() for r in roles if r]
     if required_role.lower() not in norm_roles:
+        logging.warning("Entra token missing required role. required=%s roles=%s", required_role, norm_roles)
         return None
 
     return payload
