@@ -109,11 +109,77 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if "priority" not in ticket:
             ticket["priority"] = "Low"
 
+        # Track changes for timeline and notifications
+        changes = []
         for key, value in updates.items():
+            old_value = ticket.get(key)
+            if old_value != value:
+                changes.append({
+                    "field": key,
+                    "old_value": old_value,
+                    "new_value": value,
+                })
             ticket[key] = value
 
-        ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        # ── Update timestamp ────────────────────────────────────────────────
+        now = datetime.now(timezone.utc)
+        ticket["updatedAt"] = now.isoformat()
         ticket["updated_at"] = ticket["updatedAt"]
+
+        # ── Add timeline entries for changes ────────────────────────────────
+        if changes:
+            if "timeline" not in ticket:
+                ticket["timeline"] = []
+            
+            for change in changes:
+                field = change["field"]
+                old_val = change["old_value"]
+                new_val = change["new_value"]
+                
+                # Create readable label for the change
+                if field == "status":
+                    label = f"Status changed from {old_val or 'Open'} to {new_val}"
+                elif field == "priority":
+                    label = f"Priority changed from {old_val or 'Low'} to {new_val}"
+                elif field == "assignedTeam":
+                    label = f"Assigned team changed from {old_val or 'Unassigned'} to {new_val}"
+                elif field == "adminNotes":
+                    label = "Admin notes updated"
+                elif field == "category":
+                    label = f"Category changed to {new_val}"
+                else:
+                    label = f"{field} updated"
+                
+                ticket["timeline"].append({
+                    "label": label,
+                    "by": "Admin",
+                    "at": now.isoformat(),
+                })
+            
+            # ── Create notification for ticket creator ──────────────────
+            # Extract ticket creator email
+            creator_email = ticket.get("email") or ""
+            creator_name = ticket.get("requesterName") or ticket.get("user") or "Requester"
+            
+            if creator_email:
+                # Create notification document
+                notification = {
+                    "id": f"notif-{ticket_id}-{len(ticket.get('timeline', []))}",
+                    "type": "notification",
+                    "ticketId": ticket_id,
+                    "ticketTitle": ticket.get("title", "Ticket"),
+                    "recipient_email": creator_email,
+                    "message": f"Your ticket has been updated",
+                    "details": f"Admin has updated: {', '.join([c['field'] for c in changes])}",
+                    "read": False,
+                    "createdAt": now.isoformat(),
+                }
+                
+                try:
+                    container.create_item(body=notification)
+                    logging.info(f"Notification created for {creator_email} about ticket {ticket_id}")
+                except Exception as notif_error:
+                    logging.error(f"Failed to create notification: {notif_error}")
 
         # ── Save updated ticket ──────────────────────────────────────────────
         container.replace_item(item=ticket["id"], body=ticket)
