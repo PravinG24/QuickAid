@@ -6,7 +6,7 @@ const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE
 const API_BASE_CONFIGURED = true;
 const accountsStorageKey = "quickaid-accounts-v1";
 const accessRequestsStorageKey = "quickaid-access-requests-v1";
-const SYSTEM_ADMIN_EMAIL = "admin@campus.edu";
+const SYSTEM_ADMIN_EMAIL = "0136136@student.uow.edu.my";
 
 function loadSession() {
   const raw = localStorage.getItem(sessionKey);
@@ -53,7 +53,7 @@ function isAdminSession(session) {
 }
 
 function isSystemAdminSession(session) {
-  return isAdminSession(session) && String(session?.email || "").toLowerCase() === SYSTEM_ADMIN_EMAIL;
+  return isAdminSession(session) && String(session?.email || "").toLowerCase() === String(SYSTEM_ADMIN_EMAIL).toLowerCase();
 }
 
 const session = loadSession();
