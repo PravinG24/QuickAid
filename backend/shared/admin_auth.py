@@ -1,15 +1,8 @@
 """Admin authorization helpers for QuickAid.
 
-This module supports a transition period where admin-only endpoints can
-accept either:
-
-1. Microsoft Entra ID access tokens with an admin app role claim.
-2. The existing legacy JWT issued by the app's admin_login endpoint.
-
-Set ADMIN_AUTH_MODE to:
-- "mixed" to allow both token types during migration.
-- "entra" to require Microsoft Entra ID tokens only.
-- "legacy" to require the existing app-issued JWT only.
+This module enforces Microsoft Entra ID (Azure AD) access tokens for
+admin-only endpoints. Legacy application-issued JWTs are no longer
+accepted.
 """
 
 from __future__ import annotations
@@ -23,11 +16,6 @@ from urllib.request import urlopen
 
 import jwt
 
-from shared.jwt_utils import verify_token as verify_legacy_token
-
-
-def _normalize_mode() -> str:
-    return str(os.environ.get("ADMIN_AUTH_MODE", "mixed")).strip().lower() or "mixed"
 
 
 def _extract_bearer_token(req) -> str:
@@ -71,56 +59,58 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
     jwk_client = jwt.PyJWKClient(jwks_uri)
     signing_key = jwk_client.get_signing_key_from_jwt(token)
 
+    # Decode and validate token signature and audience, but perform a
+    # flexible issuer check because tokens may be issued with either the
+    # v2.0 issuer (login.microsoftonline.com/.../v2.0) or the legacy
+    # sts.windows.net issuer. We also perform a case-insensitive role
+    # comparison to avoid mismatches in role casing.
     payload = jwt.decode(
         token,
         signing_key.key,
         algorithms=["RS256"],
         audience=audience,
-        issuer=issuer,
+        options={"verify_issuer": False},
     )
+
+    token_iss = str(payload.get("iss", "")).rstrip("/")
+    tenant_id = str(os.environ.get("ENTRA_TENANT_ID", "")).strip()
+    allowed_issuers = set()
+    if issuer:
+        allowed_issuers.add(str(issuer).rstrip("/"))
+    if tenant_id:
+        allowed_issuers.add(f"https://sts.windows.net/{tenant_id}")
+
+    if token_iss not in allowed_issuers:
+        return None
 
     roles = payload.get("roles") or []
     if isinstance(roles, str):
         roles = [roles]
 
-    if required_role not in roles:
+    # normalize to lowercase for comparison
+    norm_roles = [str(r).lower() for r in roles if r]
+    if required_role.lower() not in norm_roles:
         return None
 
     return payload
-
-
 def authorize_admin_request(req) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
-    """Authorize an admin request.
+    """Authorize an admin request using Microsoft Entra ID tokens only.
 
-    Returns a tuple of (payload, auth_type, error_message). If authorization
-    fails, payload and auth_type are None and error_message contains a short
-    reason for the caller to return.
+    Returns (payload, auth_type, error_message). On success payload is the
+    decoded Entra token and auth_type is "entra". On failure payload and
+    auth_type are None and error_message explains the reason.
     """
     token = _extract_bearer_token(req)
     if not token:
         return None, None, "Missing bearer token."
 
-    mode = _normalize_mode()
-
-    if mode in {"mixed", "legacy"}:
-        legacy_payload = verify_legacy_token(token)
-        if legacy_payload and str(legacy_payload.get("role", "")).lower() == "admin":
-            return legacy_payload, "legacy", None
-
-    if mode in {"mixed", "entra"}:
-        try:
-            entra_payload = _verify_entra_token(token)
-        except Exception as exc:
-            logging.warning("Entra token validation failed: %s", exc)
-            entra_payload = None
-
-        if entra_payload:
-            return entra_payload, "entra", None
-
-    if mode == "legacy":
-        return None, None, "Invalid or expired admin token."
-
-    if mode == "entra":
+    try:
+        entra_payload = _verify_entra_token(token)
+    except Exception as exc:
+        logging.warning("Entra token validation failed: %s", exc)
         return None, None, "Invalid Entra admin token or missing required role."
 
-    return None, None, "Invalid admin token."
+    if not entra_payload:
+        return None, None, "Invalid Entra admin token or missing required role."
+
+    return entra_payload, "entra", None

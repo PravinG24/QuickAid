@@ -7,7 +7,6 @@ import os
 from azure.cosmos import CosmosClient
 
 from shared.secrets import get_secret
-from shared.jwt_utils import create_admin_token
 
 
 def hash_password(password: str) -> str:
@@ -61,28 +60,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
         )
 
-    try:
-        token = create_admin_token(
-            admin_id=admin.get("adminId", admin.get("id")),
-            email=admin["email"],
-            name=admin["name"],
-        )
-    except Exception as exc:
-        logging.error("Failed to create JWT token: %s", exc)
-        return func.HttpResponse(
-            json.dumps({"error": "Failed to generate authentication token."}),
-            status_code=500,
-            mimetype="application/json",
-        )
-
+    # Legacy JWT issuance has been removed. Admins must authenticate via
+    # Microsoft Entra ID (Azure AD). Return a clear 403 response so callers
+    # know to switch to the Entra login flow.
     return func.HttpResponse(
         json.dumps({
-            "adminId": admin.get("adminId", admin.get("id")),
-            "name": admin.get("name"),
-            "email": admin.get("email"),
-            "role": "admin",
-            "token": token,
+            "error": "Admin login via application credentials is disabled. Use Microsoft Entra ID (Azure AD) to sign in.",
         }),
-        status_code=200,
+        status_code=403,
         mimetype="application/json",
     )

@@ -9,31 +9,9 @@ from typing import Dict, Optional
 from shared.secrets import get_secret
 
 
-def create_admin_token(admin_id: str, email: str, name: str, ttl_hours: int = 24) -> str:
-    """Create a JWT token for admin authentication.
-    
-    Args:
-        admin_id: Unique admin identifier
-        email: Admin email address
-        name: Admin name
-        ttl_hours: Token time-to-live in hours
-        
-    Returns:
-        Encoded JWT token string
-    """
-    secret = get_secret("JWT-SECRET", env_fallback="JWT_SECRET")
-    
-    payload = {
-        "admin_id": admin_id,
-        "email": email,
-        "name": name,
-        "role": "admin",
-        "iat": datetime.now(timezone.utc),
-        "exp": datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
-    }
-    
-    token = jwt.encode(payload, secret, algorithm="HS256")
-    return token
+# Admin JWT creation removed: application-issued admin tokens are no longer
+# supported. Microsoft Entra ID (Azure AD) is the required authentication
+# mechanism for admin endpoints.
 
 
 def create_user_token(user_id: str, email: str, name: str, ttl_hours: int = 24) -> str:

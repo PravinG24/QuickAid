@@ -552,6 +552,7 @@ let activeSupportTeamId = "";
 let supportRequestFilterValue = "all";
 let supportTeamsState = null;
 let activeSupportTab = "groups";
+let lastAdminApiError = "";
 const addTeamModal = document.getElementById("addTeamModal");
 const addTeamForm = document.getElementById("addTeamForm");
 const addTeamNameInput = document.getElementById("addTeamName");
@@ -566,12 +567,79 @@ function resolveApiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
-function apiHeaders(extra = {}) {
+function getEntraScope() {
+  return (
+    String(window.QUICKAID_ENTRA_API_SCOPE || "").trim() ||
+    `${String(window.QUICKAID_ENTRA_API_AUDIENCE || "").trim()}/access_as_user`
+  );
+}
+
+let adminMsalInstancePromise = null;
+
+async function getAdminMsalInstance() {
+  if (adminMsalInstancePromise) return adminMsalInstancePromise;
+
+  adminMsalInstancePromise = (async () => {
+    if (!window.msal?.PublicClientApplication) return null;
+    const clientId = String(window.QUICKAID_ENTRA_CLIENT_ID || "").trim();
+    const tenantId = String(window.QUICKAID_ENTRA_TENANT_ID || "").trim();
+    if (!clientId || !tenantId) return null;
+
+    const msalInstance = new window.msal.PublicClientApplication({
+      auth: {
+        clientId,
+        authority: `https://login.microsoftonline.com/${tenantId}`,
+        redirectUri: String(window.QUICKAID_ENTRA_REDIRECT_URI || `${window.location.origin}/login.html`).trim(),
+      },
+      cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false },
+    });
+
+    if (typeof msalInstance.initialize === "function") {
+      await msalInstance.initialize();
+    }
+
+    return msalInstance;
+  })();
+
+  return adminMsalInstancePromise;
+}
+
+async function ensureAdminAccessToken() {
+  const existingToken = String(session?.token || "").trim();
+  if (existingToken) return existingToken;
+
+  if (String(session?.provider || "").toLowerCase() !== "entra") return "";
+
+  try {
+    const msalInstance = await getAdminMsalInstance();
+    if (!msalInstance) return "";
+
+    const account = msalInstance.getAllAccounts()[0];
+    const scope = getEntraScope();
+    if (!account || !scope || scope.startsWith("/")) return "";
+
+    const tokenResult = await msalInstance.acquireTokenSilent({ account, scopes: [scope] });
+    const accessToken = String(tokenResult?.accessToken || "").trim();
+    if (!accessToken) return "";
+
+    if (session) {
+      session.token = accessToken;
+      localStorage.setItem(sessionKey, JSON.stringify(session));
+    }
+
+    return accessToken;
+  } catch (error) {
+    console.warn("QuickAid: unable to silently refresh Entra access token.", error);
+    return "";
+  }
+}
+
+function apiHeaders(extra = {}, tokenOverride = "") {
   const headers = { ...extra };
   const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
   if (functionKey) headers["x-functions-key"] = functionKey;
 
-  const sessionToken = String(session?.token || "").trim();
+  const sessionToken = String(tokenOverride || session?.token || "").trim();
   if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
 
   return headers;
@@ -580,11 +648,20 @@ function apiHeaders(extra = {}) {
 async function fetchJsonOrFallback(path, fallbackData) {
   const url = resolveApiUrl(path);
   try {
-    const response = await fetch(url, { headers: apiHeaders({ Accept: "application/json" }) });
-    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    const accessToken = await ensureAdminAccessToken();
+    const response = await fetch(url, { headers: apiHeaders({ Accept: "application/json" }, accessToken) });
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      const compactBody = String(errorBody || "").replace(/\s+/g, " ").trim();
+      throw new Error(compactBody ? `Request failed (${response.status}): ${compactBody}` : `Request failed (${response.status}).`);
+    }
+    lastAdminApiError = "";
     return await response.json();
-  } catch {
-    return null;
+  } catch (error) {
+    const message = String(error?.message || "Request failed.").trim();
+    lastAdminApiError = message;
+    console.error("QuickAid admin API error:", message);
+    return fallbackData;
   }
 }
 
@@ -1590,9 +1667,10 @@ async function refreshOverviewForActiveRange() {
 
 async function persistOverviewTicketUpdate(ticket) {
   try {
+    const accessToken = await ensureAdminAccessToken();
     const response = await fetch(`${API_BASE}/api/tickets_update/${encodeURIComponent(ticket.ticketId)}`, {
       method: "PATCH",
-      headers: apiHeaders({ "Content-Type": "application/json" }),
+      headers: apiHeaders({ "Content-Type": "application/json" }, accessToken),
       body: JSON.stringify({
         status: ticket.status,
         priority: ticket.priority,
@@ -2201,7 +2279,7 @@ async function loadAdminData() {
   if (!ticketsData) {
     showUpdateToast({
       title: "Admin API unavailable",
-      detail: "Could not load /api/tickets from the backend.",
+      detail: lastAdminApiError || "Could not load /api/tickets from the backend.",
       tone: "warning",
     });
   }
