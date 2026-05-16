@@ -1691,7 +1691,7 @@ async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
   if (!API_BASE_CONFIGURED || !requestId) return true;
   try {
     const accessToken = await ensureAdminAccessToken();
-    const response = await fetch(`${API_BASE}/api/admin_approvals`, {
+    const response = await fetch(`${API_BASE}/api/approvals/admin`, {
       method: "PATCH",
       headers: apiHeaders({ "Content-Type": "application/json" }, accessToken),
       body: JSON.stringify({ adminId: requestId, status, reviewedBy }),
@@ -2280,7 +2280,7 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
 
 async function loadAdminData() {
   const ticketsData = await fetchJsonOrFallback("/api/tickets", null);
-  const approvalsData = await fetchJsonOrFallback("/api/admin_approvals", { requests: [] });
+  const approvalsData = await fetchJsonOrFallback("/api/approvals/admin", { requests: [] });
   const tickets = Array.isArray(ticketsData?.tickets)
     ? ticketsData.tickets.map(normalizeAdminTicket)
     : [];

@@ -7,7 +7,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["get", "patch"],
-      "route": "admin_approvals"
+      "route": "approvals/admin"
     },
     {
       "type": "http",

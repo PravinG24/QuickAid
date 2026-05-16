@@ -194,7 +194,7 @@ async function loginWithMicrosoftAdmin() {
   let approvalLookup = null;
   try {
     approvalLookup = await apiGet(
-      "/api/admin_approvals?mine=true",
+      "/api/approvals/admin?mine=true",
       tokenResult.accessToken || tokenResult.idToken || ""
     );
   } catch (error) {
