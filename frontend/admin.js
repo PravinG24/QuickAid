@@ -133,7 +133,11 @@ const adminNotifUnreadCount = document.getElementById("adminNotifUnreadCount");
 const adminNotifList = document.getElementById("adminNotifList");
 const adminBtnMarkAllRead = document.getElementById("adminBtnMarkAllRead");
 
-let adminNotifications = [];
+const adminNotifications = [
+  { id: "n1", title: "3 high-priority tickets need triage", time: "5m ago", read: false },
+  { id: "n2", title: "IT Network Services resolved TKT-309", time: "18m ago", read: false },
+  { id: "n3", title: "Weekly admin report is ready", time: "1h ago", read: true },
+];
 
 function isAdminApprovalManager() {
   return isAdminSession(session);
@@ -144,85 +148,29 @@ function logoutAndRedirectToLogin() {
   window.location.href = "./login.html";
 }
 
-
-async function fetchAdminNotifications() {
-  const session = loadSession();
-  if (!session?.email) return [];
-  
-  try {
-    const response = await fetch(
-      `${API_BASE}/api/get_notifications?email=${encodeURIComponent(session.email)}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "X-Correlation-Id": crypto.randomUUID(),
-        },
-      }
-    );
-    
-    if (!response.ok) {
-      return [];
-    }
-    
-    const data = await response.json();
-    return data.notifications || [];
-  } catch (e) {
-    return [];
+function updateAdminAuthUi() {
+  if (adminSessionLabel && session?.email) {
+    adminSessionLabel.textContent = `Signed in as ${session.email}`;
   }
-}
-
-async function markAdminNotificationAsRead(notificationId) {
-  try {
-    await fetch(`${API_BASE}/api/mark_notification_read/${encodeURIComponent(notificationId)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Correlation-Id": crypto.randomUUID(),
-      },
-      body: JSON.stringify({ isRead: true }),
-    });
-  } catch (e) {
-    // ignore
-  }
-}
-
-function formatAdminNotificationTime(isoDate) {
-  try {
-    const date = new Date(isoDate);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString();
-  } catch {
-    return "recently";
+  if (session?.email) {
+    adminBtnSignIn?.classList.add("hidden");
+    adminBtnLogout?.classList.remove("hidden");
+  } else {
+    adminBtnSignIn?.classList.remove("hidden");
+    adminBtnLogout?.classList.add("hidden");
   }
 }
 
 function renderAdminNotifications() {
   if (!adminNotifList) return;
-  
-  if (!adminNotifications.length) {
-    adminNotifList.innerHTML = '<li class="notif-item"><p class="notif-text-title" style="color: #999;">No notifications yet</p></li>';
-    return;
-  }
-  
   adminNotifList.innerHTML = adminNotifications
     .map(
       (item) => `
-      <li class="notif-item ${item.isRead ? "notif-item-read" : "notif-item-unread"}" data-notif-id="${item.id}">
-        <span class="${item.isRead ? "notif-check" : "notif-dot"}" aria-hidden="true">${item.isRead ? "✓" : ""}</span>
+      <li class="notif-item ${item.read ? "notif-item-read" : "notif-item-unread"}" data-notif-id="${item.id}">
+        <span class="${item.read ? "notif-check" : "notif-dot"}" aria-hidden="true">${item.read ? "✓" : ""}</span>
         <div class="notif-text">
-          <p class="notif-text-title">${escapeHtml(item.title)}</p>
-          <p class="notif-time">${formatAdminNotificationTime(item.createdAt)}</p>
+          <p class="notif-text-title">${item.title}</p>
+          <p class="notif-time">${item.time}</p>
         </div>
       </li>
     `
@@ -230,9 +178,8 @@ function renderAdminNotifications() {
     .join("");
 }
 
-async function updateAdminNotificationUi() {
-  adminNotifications = await fetchAdminNotifications();
-  const unread = adminNotifications.filter((item) => !item.isRead).length;
+function updateAdminNotificationUi() {
+  const unread = adminNotifications.filter((item) => !item.read).length;
   if (adminNotifUnreadCount) adminNotifUnreadCount.textContent = String(unread);
   if (adminNotifBadge) {
     adminNotifBadge.textContent = String(unread);
@@ -260,18 +207,14 @@ adminLogoutBtn?.addEventListener("click", logoutAndRedirectToLogin);
 adminBtnLogout?.addEventListener("click", logoutAndRedirectToLogin);
 adminBtnNotifications?.addEventListener("click", (event) => {
   event.stopPropagation();
-  updateAdminNotificationUi();
   toggleAdminNotifDropdown();
 });
-adminBtnMarkAllRead?.addEventListener("click", async () => {
-  for (const notif of adminNotifications.filter(n => !n.isRead)) {
-    await markAdminNotificationAsRead(notif.id);
-  }
+adminBtnMarkAllRead?.addEventListener("click", () => {
+  adminNotifications.forEach((item) => {
+    item.read = true;
+  });
   updateAdminNotificationUi();
 });
-
-// Refresh admin notifications every 30 seconds
-setInterval(updateAdminNotificationUi, 30000);
 
 document.addEventListener("click", (event) => {
   const target = event.target;
@@ -697,6 +640,8 @@ async function ensureAdminAccessToken() {
 
 function apiHeaders(extra = {}, tokenOverride = "") {
   const headers = { ...extra };
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) headers["x-functions-key"] = functionKey;
 
   const sessionToken = String(tokenOverride || session?.token || "").trim();
   if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;

@@ -109,49 +109,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if "priority" not in ticket:
             ticket["priority"] = "Low"
 
-        # Track activity log
-        activity_log = ticket.get("activityLog", []) or []
-        admin_email = payload.get("email", "admin@system")
-        timestamp = datetime.now(timezone.utc).isoformat()
-        
-        # Log each change
         for key, value in updates.items():
-            old_value = ticket.get(key)
-            if old_value != value:
-                activity_log.append({
-                    "type": "update",
-                    "field": key,
-                    "oldValue": old_value,
-                    "newValue": value,
-                    "changedBy": admin_email,
-                    "changedAt": timestamp,
-                })
             ticket[key] = value
 
-        ticket["activityLog"] = activity_log
-        ticket["updatedAt"] = timestamp
-        ticket["updated_at"] = timestamp
+        ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        ticket["updated_at"] = ticket["updatedAt"]
 
         # ── Save updated ticket ──────────────────────────────────────────────
         container.replace_item(item=ticket["id"], body=ticket)
-        
-        # ── Create notification for ticket creator ──────────────────────────
-        try:
-            notification = {
-                "id": f"NOTIF-{ticket_id}-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
-                "type": "notification",
-                "ticketId": ticket_id,
-                "recipientEmail": ticket.get("email"),
-                "title": f"Ticket {ticket_id} has been updated",
-                "message": f"Your ticket has been updated. Status: {updates.get('status', ticket.get('status', 'Open'))}, Priority: {updates.get('priority', ticket.get('priority', 'Low'))}",
-                "updateType": "status" if "status" in updates else ("priority" if "priority" in updates else ("assignedTeam" if "assignedTeam" in updates else "other")),
-                "createdAt": timestamp,
-                "isRead": False,
-            }
-            container.create_item(body=notification)
-            logging.info(f"Notification created for ticket {ticket_id}")
-        except Exception as e:
-            logging.warning(f"Failed to create notification: {e}")
 
     except exceptions.CosmosHttpResponseError as e:
         logging.error(f"Cosmos DB error: {e}")

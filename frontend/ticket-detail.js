@@ -79,25 +79,6 @@ function normalizeDetailTicket(source) {
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
   const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || new Date().toISOString();
   const updatedAt = item.updated_at || item.updatedAt || item.created_at || item.createdAt || item.submitted_at || new Date().toISOString();
-  
-  // Convert activityLog to timeline format
-  const activityLog = Array.isArray(item.activityLog) ? item.activityLog : [];
-  const timelineFromActivity = activityLog.map(log => ({
-    label: `${log.field} changed from "${log.oldValue}" to "${log.newValue}"`,
-    by: log.changedBy || "Admin",
-    at: log.changedAt,
-    type: "update",
-    field: log.field,
-  }));
-  
-  // Combine with existing timeline
-  const existingTimeline = Array.isArray(item.timeline) ? item.timeline : [];
-  const timeline = [...existingTimeline, ...timelineFromActivity].sort((a, b) => {
-    const aTime = new Date(a.at || a.createdAt || 0).getTime();
-    const bTime = new Date(b.at || b.createdAt || 0).getTime();
-    return aTime - bTime;
-  });
-  
   return {
     ...item,
     ticket_id: ticketId,
@@ -110,7 +91,6 @@ function normalizeDetailTicket(source) {
     updated_at: updatedAt,
     createdAt,
     updatedAt,
-    timeline: timeline,
   };
 }
 
@@ -299,30 +279,9 @@ function renderTicket(ticket) {
       entry.actor ||
       (String(entry.label || "").toLowerCase().includes("created") ? ticket.name || "Requester" : "System"),
   }));
-  
-  // Use custom renderer if available, otherwise use default
-  if (sharedTicketView.renderTimeline) {
-    timeline.innerHTML = sharedTicketView.renderTimeline(normalizedTimeline);
-  } else {
-    // Default timeline renderer
-    if (!normalizedTimeline.length) {
-      timeline.innerHTML = '<li class="muted">No timeline entries.</li>';
-    } else {
-      timeline.innerHTML = normalizedTimeline.map((entry, idx) => {
-        const timeStr = formatDateTime(entry.at || entry.createdAt);
-        const field = entry.field ? ` <strong>${escapeHtml(entry.field)}</strong>` : '';
-        const label = entry.label || "Activity logged";
-        return `<li class="timeline-entry">
-          <div class="timeline-marker" aria-hidden="true"></div>
-          <div class="timeline-content">
-            <p class="timeline-title">${field}</p>
-            <p class="timeline-description">${escapeHtml(label)}</p>
-            <p class="timeline-meta">By ${escapeHtml(entry.by || "System")} at ${timeStr}</p>
-          </div>
-        </li>`;
-      }).join('');
-    }
-  }
+  timeline.innerHTML = sharedTicketView.renderTimeline
+    ? sharedTicketView.renderTimeline(normalizedTimeline)
+    : '<li class="muted">No timeline entries.</li>';
 }
 
 function bindAddComment() {
