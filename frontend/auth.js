@@ -170,6 +170,11 @@ async function loginWithMicrosoftAdmin() {
   if (!isAdminRoleClaim(claims)) {
     throw new Error("Your account does not have the Admin app role.");
   }
+  const approvalLookup = await apiGet("/api/admin_approvals?mine=true", tokenResult.accessToken || tokenResult.idToken || "");
+  const approvalStatus = String(approvalLookup?.request?.approvalStatus || approvalLookup?.approvalStatus || "").toLowerCase();
+  if (approvalStatus !== "approved" && approvalStatus !== "active") {
+    throw new Error("Your admin request is pending approval.");
+  }
   const email = getTokenEmail(claims, account);
   const name = getTokenName(claims, account, email);
   const session = {
@@ -193,6 +198,19 @@ async function apiPost(path, payload) {
     headers,
     body: JSON.stringify(payload),
   });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error_message || data?.message || data?.error || `Request failed (${response.status}).`);
+  }
+  return data;
+}
+
+async function apiGet(path, accessToken = "") {
+  const headers = {};
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) headers["x-functions-key"] = functionKey;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data?.error_message || data?.message || data?.error || `Request failed (${response.status}).`);
@@ -516,6 +534,15 @@ if (registerForm) {
 
     if (role === "staff") {
       setError("registerRoleError", "Staff registration is disabled until backend supports staff accounts.");
+      return;
+    }
+
+    if (role === "admin") {
+      if (approvalNoteEl) {
+        approvalNoteEl.textContent =
+          account?.message || "Your admin request has been submitted. A pre-approved admin must approve it before you can sign in.";
+        approvalNoteEl.classList.remove("hidden");
+      }
       return;
     }
 

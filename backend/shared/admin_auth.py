@@ -110,6 +110,30 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
     return payload
+
+
+def _is_approved_admin(email: str) -> bool:
+    normalized_email = str(email or "").strip().lower()
+    if not normalized_email:
+        return False
+
+    from shared.admin_approvals import get_container, find_admin_request_by_email, get_bootstrap_admin_email
+
+    if normalized_email == get_bootstrap_admin_email():
+        return True
+
+    container = get_container()
+    request = find_admin_request_by_email(container, normalized_email)
+    if not request:
+        logging.warning("No admin approval record found for %s", normalized_email)
+        return False
+
+    status = str(request.get("approvalStatus") or request.get("status") or "").strip().lower()
+    if status not in {"approved", "active"}:
+        logging.warning("Admin approval not granted for %s status=%s", normalized_email, status)
+        return False
+
+    return True
 def authorize_admin_request(req) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
     """Authorize an admin request using Microsoft Entra ID tokens only.
 
@@ -129,5 +153,14 @@ def authorize_admin_request(req) -> Tuple[Optional[Dict[str, Any]], Optional[str
 
     if not entra_payload:
         return None, None, "Invalid Entra admin token or missing required role."
+
+    email = str(
+        entra_payload.get("preferred_username")
+        or entra_payload.get("email")
+        or entra_payload.get("upn")
+        or ""
+    ).strip().lower()
+    if not _is_approved_admin(email):
+        return None, None, "Your admin request is pending approval."
 
     return entra_payload, "entra", None

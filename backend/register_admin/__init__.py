@@ -79,7 +79,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     if existing:
         return func.HttpResponse(
-            json.dumps({"error": "Email is already registered as admin."}),
+            json.dumps({"error": "Email already has an admin request or account."}),
             status_code=409,
             mimetype="application/json"
         )
@@ -93,7 +93,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     count   = count_result[0] if count_result else 0
     admin_id = f"ADM-{str(count + 1).zfill(2)}"
 
-    # ── Build admin document ─────────────────────────────────────────────────
+    # ── Build admin request document ────────────────────────────────────────
     now  = datetime.now(timezone.utc)
     admin = {
         "id":           admin_id,
@@ -105,7 +105,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "role":         "admin",
         "createdAt":    now.isoformat(),
         "updatedAt":    now.isoformat(),
-        "status":       "Active"
+        "requestedAt":  now.isoformat(),
+        "status":       "pending",
+        "approvalStatus": "pending",
+        "reviewedBy":   ""
     }
 
     # ── Save to Cosmos DB ────────────────────────────────────────────────────
@@ -130,13 +133,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     # ── Success ──────────────────────────────────────────────────────────────
     return func.HttpResponse(
         json.dumps({
-            "message":   "Admin registered successfully.",
+            "message":   "Admin registration submitted for approval.",
             "adminId":   admin_id,
             "name":      name,
             "email":     email,
             "role":      "admin",
-            "createdAt": now.isoformat()
+            "createdAt": now.isoformat(),
+            "approvalStatus": "pending"
         }),
-        status_code=201,
+        status_code=202,
         mimetype="application/json"
     )

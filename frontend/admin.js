@@ -1689,16 +1689,13 @@ async function persistOverviewTicketUpdate(ticket) {
 
 /* Extra frontend-only function disabled: access request approval has no backend route yet. */
 async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
-  // new function from frontend
-  // BACKEND NOTE:
-  // Expected endpoint: PATCH /api/admin/access_requests/:requestId
-  // Expected behavior: persist approval/rejection and optionally return updated team/staff payload.
   if (!API_BASE_CONFIGURED || !requestId) return true;
   try {
-    const response = await fetch(`${API_BASE}/api/admin/access_requests/${encodeURIComponent(requestId)}`, {
+    const accessToken = await ensureAdminAccessToken();
+    const response = await fetch(`${API_BASE}/api/admin_approvals`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, reviewedBy }),
+      headers: apiHeaders({ "Content-Type": "application/json" }, accessToken),
+      body: JSON.stringify({ adminId: requestId, status, reviewedBy }),
     });
     return response.ok;
   } catch {
@@ -2284,6 +2281,7 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
 
 async function loadAdminData() {
   const ticketsData = await fetchJsonOrFallback("/api/tickets", null);
+  const approvalsData = await fetchJsonOrFallback("/api/admin_approvals", { requests: [] });
   const tickets = Array.isArray(ticketsData?.tickets)
     ? ticketsData.tickets.map(normalizeAdminTicket)
     : [];
@@ -2308,7 +2306,7 @@ async function loadAdminData() {
       },
     ],
   });
-  renderSupportTeams({ teams: [], accessRequests: [] });
+  renderSupportTeams({ ...mockAdminData.supportTeams, accessRequests: Array.isArray(approvalsData?.requests) ? approvalsData.requests : [] });
   if (!ticketsData) {
     showUpdateToast({
       title: "Admin API unavailable",
