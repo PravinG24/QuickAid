@@ -1687,7 +1687,6 @@ async function persistOverviewTicketUpdate(ticket) {
   }
 }
 
-/* Extra frontend-only function disabled: access request approval has no backend route yet. */
 async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
   if (!API_BASE_CONFIGURED || !requestId) return true;
   try {

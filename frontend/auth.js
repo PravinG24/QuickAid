@@ -155,6 +155,27 @@ function isAdminRoleClaim(claims) {
   return getTokenRoles(claims).some((role) => String(role).toLowerCase() === "admin");
 }
 
+function normalizeApprovalStatus(approvalLookup) {
+  return String(approvalLookup?.request?.approvalStatus || approvalLookup?.approvalStatus || "")
+    .trim()
+    .toLowerCase();
+}
+
+function assertAdminApprovalStatus(approvalLookup) {
+  const status = normalizeApprovalStatus(approvalLookup);
+  if (status === "approved" || status === "active") return;
+  if (status === "rejected") {
+    throw new Error("Your admin access request was rejected. Contact the system admin.");
+  }
+  if (status === "pending") {
+    throw new Error("Your admin request is still pending approval.");
+  }
+  if (status === "missing") {
+    throw new Error("No admin approval request found for this account. Please register as admin first.");
+  }
+  throw new Error("Unable to confirm admin approval status right now. Please try again.");
+}
+
 async function loginWithMicrosoftAdmin() {
   const msalInstance = getEntraMsalInstance();
   const scope = getEntraAdminScope();
@@ -170,11 +191,20 @@ async function loginWithMicrosoftAdmin() {
   if (!isAdminRoleClaim(claims)) {
     throw new Error("Your account does not have the Admin app role.");
   }
-  const approvalLookup = await apiGet("/api/admin_approvals?mine=true", tokenResult.accessToken || tokenResult.idToken || "");
-  const approvalStatus = String(approvalLookup?.request?.approvalStatus || approvalLookup?.approvalStatus || "").toLowerCase();
-  if (approvalStatus !== "approved" && approvalStatus !== "active") {
-    throw new Error("Your admin request is pending approval.");
+  let approvalLookup = null;
+  try {
+    approvalLookup = await apiGet(
+      "/api/admin_approvals?mine=true",
+      tokenResult.accessToken || tokenResult.idToken || ""
+    );
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (message.includes("404") || message.toLowerCase().includes("not found")) {
+      throw new Error("Admin approval service is not available yet. Please try again in a moment.");
+    }
+    throw new Error(message || "Failed to validate admin approval status.");
   }
+  assertAdminApprovalStatus(approvalLookup);
   const email = getTokenEmail(claims, account);
   const name = getTokenName(claims, account, email);
   const session = {
