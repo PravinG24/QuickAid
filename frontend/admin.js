@@ -1780,6 +1780,36 @@ function bindOverviewInteractions() {
       openAdminModal();
       return;
     }
+
+    if (control === "delete") {
+      (async () => {
+        const confirmMessage = `Delete ticket ${ticket.ticketId}? This action cannot be undone.`;
+        if (!window.confirm(confirmMessage)) return;
+        try {
+          target.disabled = true;
+          target.textContent = "Deleting...";
+          const accessToken = await ensureAdminAccessToken();
+          const resp = await fetch(`${API_BASE}/api/tickets/${encodeURIComponent(ticket.ticketId)}`, {
+            method: "DELETE",
+            headers: apiHeaders({}, accessToken),
+          });
+          if (resp.ok) {
+            showUpdateToast({ title: "Ticket deleted", detail: `${ticket.ticketId} removed`, tone: "success" });
+            await loadAdminData();
+          } else {
+            const txt = await resp.text().catch(() => "");
+            showUpdateToast({ title: "Delete failed", detail: lastAdminApiError || `Request failed (${resp.status}): ${txt}`, tone: "warning" });
+          }
+        } catch (err) {
+          showUpdateToast({ title: "Delete failed", detail: String(err?.message || err), tone: "warning" });
+        } finally {
+          target.disabled = false;
+          target.textContent = "Delete";
+        }
+      })();
+      return;
+    }
+
     if (control !== "update") return;
 
     const row = target.closest("tr");
@@ -2025,6 +2055,9 @@ function renderManageTickets(tickets) {
             <button class="table-btn update" type="button" data-control="update" data-ticket-id="${escapeHtml(
               ticket.ticketId
             )}">Update</button>
+            <button class="table-btn delete" type="button" data-control="delete" data-ticket-id="${escapeHtml(
+              ticket.ticketId
+            )}">Delete</button>
           </div>
         </td>
       </tr>

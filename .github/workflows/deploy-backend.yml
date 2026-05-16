@@ -57,7 +57,7 @@ jobs:
             --user "${SCM_USER}:${SCM_PASS}" \
             -H "Content-Type: application/zip" \
             --data-binary @backend.zip \
-            "https://${SCM_HOST}/api/publish?RemoteBuild=false&Async=false")
+            "https://${SCM_HOST}/api/publish?RemoteBuild=true&Async=false")
           
           echo "Status: $STATUS"
           cat /tmp/response.txt
