@@ -76,7 +76,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
 
         # Delete by id (partition handling is left to the container configuration)
-        container.delete_item(item=ticket["id"])
+        container.delete_item(item=ticket["id"], partition_key=ticket["type"])
 
     except exceptions.CosmosHttpResponseError as e:
         logging.error(f"Cosmos DB error: {e}")
