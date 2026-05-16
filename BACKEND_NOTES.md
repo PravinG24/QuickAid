@@ -406,9 +406,6 @@ Existing functions currently return direct objects. That is acceptable for the c
   - `PASSWORD_SECRET` or Key Vault `PasswordPepper`
   - `SENDGRID_API_KEY` or Key Vault `SendGridApiKey`
   - `SENDGRID_FROM_EMAIL`
-- [ ] If using function-level auth, frontend deployment config includes:
-  - `window.QUICKAID_FUNCTION_KEY`
-  - GitHub secret `AZURE_FUNCTION_KEY`
 - [ ] Confirm route names in frontend docs:
   - admin login route must be `/api/login/admin`, not `/api/admin_login`.
 

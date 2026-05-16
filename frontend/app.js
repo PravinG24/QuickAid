@@ -846,48 +846,14 @@ function updateHeaderAuthUi() {
 
 // -----------------------------
 // Notifications dropdown wiring
-// -----------------------------
-function closeNotifDropdown() {
-  // Backend-first mode: notification UI is disabled until backend has notification routes.
-}
-
-/* Extra frontend-only function disabled: notifications have no backend route yet.
+// ---------
 const notifStorageKey = "quickaid-notifs-read-v1";
-const defaultNotifications = [
-  {
-    id: "n1",
-    unread: true,
-    title: "Your ticket #TKT-001 has been assigned to IT Support",
-    time: "2 hours ago",
-  },
-  {
-    id: "n2",
-    unread: true,
-    title: "New comment added to ticket #TKT-002",
-    time: "1 day ago",
-  },
-  {
-    id: "n3",
-    unread: false,
-    title: "Ticket #TKT-003 has been resolved",
-    time: "3 days ago",
-  },
-];
+let userNotifications = [];
 
-function loadNotifReadSet() {
-  const raw = localStorage.getItem(notifStorageKey);
-  if (!raw) return new Set(["n3"]);
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set(["n3"]);
-    return new Set(parsed.map(String));
-  } catch {
-    return new Set(["n3"]);
-  }
-}
-
-function saveNotifReadSet(readSet) {
-  localStorage.setItem(notifStorageKey, JSON.stringify(Array.from(readSet)));
+function closeNotifDropdown() {
+  if (!notifDropdown) return;
+  notifDropdown.classList.add("hidden");
+  btnNotifications?.setAttribute("aria-expanded", "false");
 }
 
 function openNotifDropdown() {
@@ -896,30 +862,88 @@ function openNotifDropdown() {
   btnNotifications?.setAttribute("aria-expanded", "true");
 }
 
-function closeNotifDropdown() {
-  if (!notifDropdown) return;
-  notifDropdown.classList.add("hidden");
-  btnNotifications?.setAttribute("aria-expanded", "false");
+async function fetchUserNotifications() {
+  const session = loadSession();
+  if (!session?.email) return [];
+  
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/get_notifications?email=${encodeURIComponent(session.email)}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.notifications || [];
+  } catch (e) {
+    return [];
+  }
 }
 
-function renderNotifDropdown() {
+async function markNotificationAsRead(notificationId) {
+  try {
+    await fetch(`${API_BASE}/api/mark_notification_read/${encodeURIComponent(notificationId)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Correlation-Id": crypto.randomUUID(),
+      },
+      body: JSON.stringify({ isRead: true }),
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+
+function formatNotificationTime(isoDate) {
+  try {
+    const date = new Date(isoDate);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
+  } catch {
+    return "recently";
+  }
+}
+
+async function renderNotifDropdown() {
   if (!notifList || !notifUnreadCount) return;
 
-  const readSet = loadNotifReadSet();
-  const notifications = defaultNotifications.map((n) => ({
-    ...n,
-    isRead: readSet.has(n.id) || !n.unread,
-  }));
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  userNotifications = await fetchUserNotifications();
+  const unreadCount = userNotifications.filter((n) => !n.isRead).length;
+  
   notifUnreadCount.textContent = String(unreadCount);
   notifBadge?.classList.toggle("hidden", unreadCount === 0);
   if (notifBadge) notifBadge.textContent = String(unreadCount);
 
   notifList.innerHTML = "";
-  notifications.forEach((n) => {
+  if (!userNotifications.length) {
+    notifList.innerHTML = '<li class="notif-item"><p class="notif-text-title" style="color: #999;">No notifications yet</p></li>';
+    return;
+  }
+  
+  userNotifications.forEach((n) => {
     const li = document.createElement("li");
     li.className = `notif-item ${n.isRead ? "notif-item-read" : "notif-item-unread"}`;
+    li.dataset.notifId = n.id;
 
     const left = document.createElement("span");
     if (n.isRead) {
@@ -942,12 +966,13 @@ function renderNotifDropdown() {
 
     const time = document.createElement("div");
     time.className = "notif-time";
+    const timeStr = formatNotificationTime(n.createdAt);
     time.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 7V12L15 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2.2"/>
       </svg>
-      <span>${n.time}</span>
+      <span>${timeStr}</span>
     `;
 
     textWrap.appendChild(title);
@@ -955,28 +980,36 @@ function renderNotifDropdown() {
 
     li.appendChild(left);
     li.appendChild(textWrap);
+    
+    // Mark as read when clicked
+    li.addEventListener("click", async () => {
+      if (!n.isRead) {
+        await markNotificationAsRead(n.id);
+        renderNotifDropdown();
+      }
+    });
+    
     notifList.appendChild(li);
   });
 }
 
-function markAllNotifAsRead() {
-  const allIds = defaultNotifications.map((n) => n.id);
-  saveNotifReadSet(new Set(allIds));
+async function markAllNotifAsRead() {
+  for (const notif of userNotifications.filter(n => !n.isRead)) {
+    await markNotificationAsRead(notif.id);
+  }
   renderNotifDropdown();
 }
 
 function wireNotificationsUi() {
   if (!btnNotifications || !notifDropdown) return;
 
-  // Initial render (unread count + list)
-  renderNotifDropdown();
-
-  btnNotifications.addEventListener("click", () => {
+  btnNotifications.addEventListener("click", (event) => {
+    event.stopPropagation();
     const isOpen = notifDropdown && !notifDropdown.classList.contains("hidden");
     if (isOpen) {
       closeNotifDropdown();
     } else {
-      renderNotifDropdown(); // refresh counts in case of state changes
+      renderNotifDropdown();
       openNotifDropdown();
     }
   });
@@ -986,19 +1019,26 @@ function wireNotificationsUi() {
     closeNotifDropdown();
   });
 
-  // Click outside to close.
+  // Click outside to close
   document.addEventListener("click", (e) => {
     if (!notifDropdown || notifDropdown.classList.contains("hidden")) return;
     const target = e.target;
     if (!target) return;
-    if (btnNotifications.contains(target)) return;
+    if (btnNotifications?.contains(target)) return;
     if (notifDropdown.contains(target)) return;
     closeNotifDropdown();
   });
+  
+  // Refresh notifications every 30 seconds
+  setInterval(renderNotifDropdown, 30000);
+  
+  // Initial render
+  renderNotifDropdown();
 }
 
+btnNotifications?.classList.remove("hidden");
 wireNotificationsUi();
-*/
+
 
 /* Extra frontend-only function disabled: profile preferences have no backend route yet.
 function openProfileModal() {
