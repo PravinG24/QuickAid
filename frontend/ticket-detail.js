@@ -405,8 +405,8 @@ function init() {
         const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
         if (functionKey) headers["x-functions-key"] = functionKey;
         if (String(session.token || "").trim()) headers.Authorization = `Bearer ${session.token}`;
-        const resp = await fetch(`${API_BASE}/api/delete_ticket/${encodeURIComponent(ticketId)}`, {
-        method: "DELETE",
+        const resp = await fetch(`${API_BASE}/api/tickets/${encodeURIComponent(ticketId)}`, {
+          method: "DELETE",
           headers,
         });
         if (resp.ok) {
