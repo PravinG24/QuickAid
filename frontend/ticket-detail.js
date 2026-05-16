@@ -1,6 +1,10 @@
 const ticketCacheStorageKey = "quickaid-ticket-cache-v1";
 const sessionKey = "quickaid-session-v1";
 let activeTicket = null;
+const DEFAULT_API_BASE = "http://localhost:7071";
+const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
+  ? window.QUICKAID_API_BASE
+  : DEFAULT_API_BASE;
 const sharedTicketView = window.QuickAidTicketView || {};
 const escapeHtml = sharedTicketView.escapeHtml || ((value) => String(value || ""));
 const formatDateTime = sharedTicketView.formatDateTime || ((value) => String(value || "-"));
@@ -386,6 +390,38 @@ function init() {
   activeTicket = normalizeDetailTicket(ticket);
   renderTicket(activeTicket);
   bindAddComment();
+  // Bind delete button in ticket detail (single delete action placed here).
+  const btnDelete = document.getElementById("btnDeleteTicket");
+  if (btnDelete) {
+    btnDelete.addEventListener("click", async () => {
+      const session = loadSession();
+      if (!session || !session.email) return alert("Sign in to delete tickets.");
+      const ticketId = String(activeTicket?.ticket_id || activeTicket?.ticketId || "");
+      if (!ticketId) return;
+      if (!confirm(`Delete ticket ${ticketId}? This action cannot be undone.`)) return;
+      try {
+        btnDelete.disabled = true;
+        const headers = {};
+        const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+        if (functionKey) headers["x-functions-key"] = functionKey;
+        if (String(session.token || "").trim()) headers.Authorization = `Bearer ${session.token}`;
+        const resp = await fetch(`${API_BASE}/api/tickets/${encodeURIComponent(ticketId)}`, {
+          method: "DELETE",
+          headers,
+        });
+        if (resp.ok) {
+          window.location.href = "./dashboard.html";
+        } else {
+          const txt = await resp.text().catch(() => "");
+          alert(`Delete failed: ${resp.status} ${txt}`);
+        }
+      } catch (err) {
+        alert(`Delete failed: ${String(err?.message || err)}`);
+      } finally {
+        btnDelete.disabled = false;
+      }
+    });
+  }
 }
 
 init();

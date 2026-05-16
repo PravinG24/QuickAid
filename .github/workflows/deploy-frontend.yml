@@ -3,7 +3,7 @@ name: Deploy Frontend to Azure App Service
 on:
   workflow_dispatch:
   push:
-    branches: [ main]
+    branches: [ main, frontend-backend-ready ]
     paths:
       - 'frontend/**'
       - '.github/workflows/deploy-frontend.yml'

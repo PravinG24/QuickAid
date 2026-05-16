@@ -2158,6 +2158,24 @@ body[data-role="staff"] {
   background: #fff;
   padding: 0.85rem;
   margin-top: 0.9rem;
+  height: 100%; /* Or a specific height */
+  display: flex;
+  flex-direction: column;
+}
+/* 
+aside {
+  position: relative;
+} */
+
+.destructive {
+  background: var(--danger);
+  margin-top: auto;
+  align-self: flex-end;
+}
+
+
+.destructive:hover{
+  background:oklch(49.97% 0.20442 28.243);
 }
 
 .detail-description {
