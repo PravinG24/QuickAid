@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 
@@ -164,13 +165,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             if creator_email:
                 # Create notification document
                 notification = {
-                    "id": f"notif-{ticket_id}-{len(ticket.get('timeline', []))}",
+                    "id": f"notif-{ticket_id}-{uuid.uuid4().hex}",
                     "type": "notification",
                     "ticketId": ticket_id,
                     "ticketTitle": ticket.get("title", "Ticket"),
                     "recipient_email": creator_email,
-                    "message": f"Your ticket has been updated",
-                    "details": f"Admin has updated: {', '.join([c['field'] for c in changes])}",
+                    "message": f"Ticket {ticket_id} updated",
+                    "details": f"Admin updated: {', '.join([c['field'] for c in changes])}",
                     "read": False,
                     "createdAt": now.isoformat(),
                 }

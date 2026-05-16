@@ -1776,12 +1776,26 @@ if (!bootSession?.email) {
 if (bootSession?.email) {
   (async () => {
     try {
-      const data = await getTicketsByEmail(bootSession.email);
-      lastLoadedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+      const [ticketsData, notificationsData] = await Promise.all([
+        getTicketsByEmail(bootSession.email),
+        getNotificationsByEmail(bootSession.email),
+      ]);
+
+      lastLoadedTickets = Array.isArray(ticketsData?.tickets)
+        ? ticketsData.tickets.map(normalizeTicketRecord)
+        : [];
       persistTicketCache(lastLoadedTickets);
       applyStatusFilter();
+
+      currentUserEmail = bootSession.email;
+      currentUserNotifications = Array.isArray(notificationsData?.notifications)
+        ? notificationsData.notifications
+        : [];
+      renderNotifDropdown();
     } catch {
       lastLoadedTickets = [];
+      currentUserNotifications = [];
+      currentUserEmail = "";
       applyStatusFilter();
     }
   })();
