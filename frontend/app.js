@@ -300,9 +300,13 @@ function ticketMatchesCategoryFilter(ticket, filterValue) {
 function toBackendTicketPayload(payload) {
   const backendPayload = {
     email: payload.email,
+    name: payload.name,
     title: payload.subject,
     description: payload.description,
     category: toBackendCategory(payload.category || payload.department || payload.request_type),
+    priority: payload.priority || "Medium",
+    location: payload.location || null,
+    department: payload.department || null,
   };
   if (payload.image) backendPayload.image = payload.image;
   return backendPayload;
@@ -492,10 +496,18 @@ function normalizeTicketRecord(source) {
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
   const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || currentIsoTime();
   const updatedAt = item.updated_at || item.updatedAt || item.submitted_at || item.created_at || item.createdAt || currentIsoTime();
+  const normalizedName =
+    item.name ||
+    item.requesterName ||
+    item.requester ||
+    item.user ||
+    (item.email ? String(item.email).split("@")[0] : "") ||
+    "Requester";
   return {
     ...item,
     ticket_id: ticketId,
     ticketId,
+    name: normalizedName,
     subject: item.subject || item.title || "No subject",
     title: item.title || item.subject || "No subject",
     status: normalizeTicketStatus(item.status),
