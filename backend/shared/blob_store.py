@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, Optional
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobClient, BlobServiceClient
 
 from shared.secrets import get_secret
@@ -12,17 +13,53 @@ DEFAULT_BLOB_CONTAINER = os.environ.get("BLOB_LOG_CONTAINER", "logs")
 DEFAULT_BLOB_FILE = os.environ.get("BLOB_LOG_FILE", "activitylogs.json")
 
 
+def _parse_storage_account_url_from_connection_string(connection_string: str) -> Optional[str]:
+    parts = [part.strip() for part in connection_string.split(";") if part.strip()]
+    values = {}
+    for part in parts:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        values[key.strip()] = value.strip()
+
+    if values.get("BlobEndpoint"):
+        return values["BlobEndpoint"]
+    if values.get("AccountName"):
+        endpoint_suffix = values.get("EndpointSuffix", "core.windows.net")
+        protocol = values.get("DefaultEndpointsProtocol", "https")
+        return f"{protocol}://{values['AccountName']}.blob.{endpoint_suffix}"
+    return None
+
+
 def get_blob_service_client() -> BlobServiceClient:
-    connection_string = get_secret(
-        "BLOB_STORAGE_CONNECTION_STRING",
-        env_fallback="BLOB_STORAGE_CONNECTION_STRING",
-    )
-    if not connection_string or not str(connection_string).strip():
-        raise RuntimeError(
-            "BLOB_STORAGE_CONNECTION_STRING is not configured. "
-            "Set it in local.settings.json or App Settings."
+    account_url = os.environ.get("BLOB_STORAGE_ACCOUNT_URL", "").strip()
+    connection_string = None
+    try:
+        connection_string = get_secret(
+            "BLOB_STORAGE_CONNECTION_STRING",
+            env_fallback="BLOB_STORAGE_CONNECTION_STRING",
         )
-    return BlobServiceClient.from_connection_string(str(connection_string).strip())
+    except RuntimeError:
+        connection_string = None
+
+    if connection_string and str(connection_string).strip():
+        try:
+            return BlobServiceClient.from_connection_string(str(connection_string).strip())
+        except Exception as exc:
+            logging.warning(
+                "Blob connection string auth failed, falling back to Azure AD auth: %s",
+                exc,
+            )
+            if not account_url:
+                account_url = _parse_storage_account_url_from_connection_string(connection_string)
+
+    if account_url:
+        return BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+
+    raise RuntimeError(
+        "Blob storage cannot be authenticated. Set BLOB_STORAGE_ACCOUNT_URL and ensure Azure credentials are available "
+        "via Azure CLI login or a managed identity, or provide a valid connection string."
+    )
 
 
 def get_blob_client(
