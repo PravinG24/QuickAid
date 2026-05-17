@@ -845,49 +845,32 @@ function updateHeaderAuthUi() {
 }
 
 // -----------------------------
-// Notifications dropdown wiring
-// -----------------------------
-function closeNotifDropdown() {
-  // Backend-first mode: notification UI is disabled until backend has notification routes.
-}
+// ─── Notifications dropdown wiring ───
+// Fetch notifications from backend when user signs in
 
-/* Extra frontend-only function disabled: notifications have no backend route yet.
-const notifStorageKey = "quickaid-notifs-read-v1";
-const defaultNotifications = [
-  {
-    id: "n1",
-    unread: true,
-    title: "Your ticket #TKT-001 has been assigned to IT Support",
-    time: "2 hours ago",
-  },
-  {
-    id: "n2",
-    unread: true,
-    title: "New comment added to ticket #TKT-002",
-    time: "1 day ago",
-  },
-  {
-    id: "n3",
-    unread: false,
-    title: "Ticket #TKT-003 has been resolved",
-    time: "3 days ago",
-  },
-];
-
-function loadNotifReadSet() {
-  const raw = localStorage.getItem(notifStorageKey);
-  if (!raw) return new Set(["n3"]);
+async function fetchNotifications(email) {
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set(["n3"]);
-    return new Set(parsed.map(String));
-  } catch {
-    return new Set(["n3"]);
-  }
-}
+    const response = await fetch(
+      `${API_BASE}/api/notifications?email=${encodeURIComponent(email)}&unread_only=false`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
 
-function saveNotifReadSet(readSet) {
-  localStorage.setItem(notifStorageKey, JSON.stringify(Array.from(readSet)));
+    if (!response.ok) {
+      logging.warning("Failed to fetch notifications: %s", response.status);
+      return { notifications: [], unread_count: 0 };
+    }
+
+    return response.json();
+  } catch (error) {
+    logging.error("Error fetching notifications: %s", error.message);
+    return { notifications: [], unread_count: 0 };
+  }
 }
 
 function openNotifDropdown() {
@@ -902,27 +885,33 @@ function closeNotifDropdown() {
   btnNotifications?.setAttribute("aria-expanded", "false");
 }
 
-function renderNotifDropdown() {
+async function renderNotifDropdown(email) {
   if (!notifList || !notifUnreadCount) return;
 
-  const readSet = loadNotifReadSet();
-  const notifications = defaultNotifications.map((n) => ({
-    ...n,
-    isRead: readSet.has(n.id) || !n.unread,
-  }));
+  const data = await fetchNotifications(email);
+  const notifications = data.notifications || [];
+  const unreadCount = data.unread_count || 0;
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
   notifUnreadCount.textContent = String(unreadCount);
   notifBadge?.classList.toggle("hidden", unreadCount === 0);
   if (notifBadge) notifBadge.textContent = String(unreadCount);
 
   notifList.innerHTML = "";
+  if (!notifications.length) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "notif-item";
+    emptyItem.textContent = "No notifications";
+    notifList.appendChild(emptyItem);
+    return;
+  }
+
   notifications.forEach((n) => {
     const li = document.createElement("li");
-    li.className = `notif-item ${n.isRead ? "notif-item-read" : "notif-item-unread"}`;
+    li.className = `notif-item ${n.read ? "notif-item-read" : "notif-item-unread"}`;
+    li.dataset.notifId = n.id;
 
     const left = document.createElement("span");
-    if (n.isRead) {
+    if (n.read) {
       left.className = "notif-check";
       left.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -938,16 +927,17 @@ function renderNotifDropdown() {
 
     const title = document.createElement("div");
     title.className = "notif-text-title";
-    title.textContent = n.title;
+    title.textContent = n.message || "Ticket update";
 
     const time = document.createElement("div");
     time.className = "notif-time";
+    const formattedTime = formatDateTime(n.timestamp);
     time.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 7V12L15 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2.2"/>
       </svg>
-      <span>${n.time}</span>
+      <span>${formattedTime}</span>
     `;
 
     textWrap.appendChild(title);
@@ -955,38 +945,83 @@ function renderNotifDropdown() {
 
     li.appendChild(left);
     li.appendChild(textWrap);
+
+    // Add click handler to mark as read
+    if (!n.read) {
+      li.addEventListener("click", async () => {
+        await markNotificationAsRead(n.id, email);
+      });
+    }
+
     notifList.appendChild(li);
   });
 }
 
-function markAllNotifAsRead() {
-  const allIds = defaultNotifications.map((n) => n.id);
-  saveNotifReadSet(new Set(allIds));
-  renderNotifDropdown();
+async function markNotificationAsRead(notificationId, email) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/notifications/${notificationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
+
+    if (response.ok) {
+      await renderNotifDropdown(email);
+    }
+  } catch (error) {
+    logging.error("Error marking notification as read: %s", error.message);
+  }
+}
+
+async function markAllNotifAsRead(email) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/notifications/all?email=${encodeURIComponent(email)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
+
+    if (response.ok) {
+      await renderNotifDropdown(email);
+    }
+  } catch (error) {
+    logging.error("Error marking all notifications as read: %s", error.message);
+  }
 }
 
 function wireNotificationsUi() {
   if (!btnNotifications || !notifDropdown) return;
 
-  // Initial render (unread count + list)
-  renderNotifDropdown();
+  const session = loadSession();
+  const email = session?.email;
+  if (!email) return;
 
-  btnNotifications.addEventListener("click", () => {
+  btnNotifications.addEventListener("click", async () => {
     const isOpen = notifDropdown && !notifDropdown.classList.contains("hidden");
     if (isOpen) {
       closeNotifDropdown();
     } else {
-      renderNotifDropdown(); // refresh counts in case of state changes
+      await renderNotifDropdown(email);
       openNotifDropdown();
     }
   });
 
-  btnMarkAllRead?.addEventListener("click", () => {
-    markAllNotifAsRead();
+  btnMarkAllRead?.addEventListener("click", async () => {
+    await markAllNotifAsRead(email);
     closeNotifDropdown();
   });
 
-  // Click outside to close.
+  // Click outside to close
   document.addEventListener("click", (e) => {
     if (!notifDropdown || notifDropdown.classList.contains("hidden")) return;
     const target = e.target;
@@ -995,10 +1030,12 @@ function wireNotificationsUi() {
     if (notifDropdown.contains(target)) return;
     closeNotifDropdown();
   });
+
+  // Load notifications when signed in
+  renderNotifDropdown(email);
 }
 
 wireNotificationsUi();
-*/
 
 /* Extra frontend-only function disabled: profile preferences have no backend route yet.
 function openProfileModal() {
