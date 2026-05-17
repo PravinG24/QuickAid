@@ -43,9 +43,36 @@ function convertActivityLogsToTimelineItems(logs) {
       const actor = String(entry.actor || "System");
       const actor_type = String(entry.actor_type || "").toLowerCase();
       const by = actor_type === "admin" ? `Admin (${actor})` : actor_type === "user" ? `User (${actor})` : actor;
-      const label = String(entry.action || "Updated ticket")
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (match) => match.toUpperCase());
+
+      let label = "Updated ticket";
+      const updatedFields = entry.updated_fields || {};
+      const fieldLabels = [];
+
+      if (typeof updatedFields === "object" && Object.keys(updatedFields).length) {
+        if (updatedFields.status) {
+          fieldLabels.push(`status to ${updatedFields.status}`);
+        }
+        if (updatedFields.priority) {
+          fieldLabels.push(`priority to ${updatedFields.priority}`);
+        }
+        if (updatedFields.assignedTeam) {
+          fieldLabels.push(`assigned team to ${updatedFields.assignedTeam}`);
+        }
+        if (updatedFields.category) {
+          fieldLabels.push(`category to ${updatedFields.category}`);
+        }
+        if (updatedFields.adminNotes) {
+          fieldLabels.push(`admin note updated`);
+        }
+      }
+
+      if (fieldLabels.length) {
+        label = `Updated ticket: ${fieldLabels.join(", ")}`;
+      } else if (entry.action) {
+        label = String(entry.action)
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
 
       return {
         label,

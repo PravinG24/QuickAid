@@ -1634,9 +1634,80 @@ async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
 }
 
 
-function renderTicketDetails(ticket) {
+async function fetchActivityLogs(ticketId) {
+  if (!ticketId) return [];
+  const headers = {};
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) headers["x-functions-key"] = functionKey;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/activity_log/${encodeURIComponent(ticketId)}`, {
+      method: "GET",
+      headers,
+    });
+    if (!response.ok) return [];
+    const body = await response.json().catch(() => null);
+    return Array.isArray(body.logs) ? body.logs : [];
+  } catch {
+    return [];
+  }
+}
+
+function convertActivityLogsToTimelineItems(logs) {
+  if (!Array.isArray(logs) || !logs.length) return [];
+
+  return logs
+    .map((entry) => {
+      const timestamp = entry.timestamp || entry.at || new Date().toISOString();
+      const actor = String(entry.actor || "System");
+      const actor_type = String(entry.actor_type || "").toLowerCase();
+      const by = actor_type === "admin" ? `Admin (${actor})` : actor_type === "user" ? `User (${actor})` : actor;
+
+      let label = "Updated ticket";
+      const updatedFields = entry.updated_fields || {};
+      const fieldLabels = [];
+
+      if (typeof updatedFields === "object" && Object.keys(updatedFields).length) {
+        if (updatedFields.status) {
+          fieldLabels.push(`status to ${updatedFields.status}`);
+        }
+        if (updatedFields.priority) {
+          fieldLabels.push(`priority to ${updatedFields.priority}`);
+        }
+        if (updatedFields.assignedTeam) {
+          fieldLabels.push(`assigned team to ${updatedFields.assignedTeam}`);
+        }
+        if (updatedFields.category) {
+          fieldLabels.push(`category to ${updatedFields.category}`);
+        }
+        if (updatedFields.adminNotes) {
+          fieldLabels.push("admin notes updated");
+        }
+      }
+
+      if (fieldLabels.length) {
+        label = `Updated ticket: ${fieldLabels.join(", ")}`;
+      } else if (entry.action) {
+        label = String(entry.action)
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
+
+      return {
+        label,
+        by,
+        at: timestamp,
+      };
+    })
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+async function renderTicketDetails(ticket) {
   if (!adminTicketModalContent) return;
   activeOverviewModalTicketId = ticket.ticketId;
+  const activityLogs = await fetchActivityLogs(ticket.ticketId);
+  ticket.timeline = convertActivityLogsToTimelineItems(activityLogs);
+
   const extraSectionHtml = `
     <section class="detail-block">
       <h3>Admin Update Controls</h3>
@@ -1703,8 +1774,7 @@ function bindOverviewInteractions() {
     if (!ticket) return;
     const control = String(target.dataset.control || "");
     if (control === "view") {
-      renderTicketDetails(ticket);
-      openAdminModal();
+      renderTicketDetails(ticket).then(openAdminModal);
       return;
     }
 

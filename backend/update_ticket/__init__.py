@@ -107,15 +107,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # ── Apply updates ────────────────────────────────────────────────────
         ticket = results[0]
         old_values = {}  # Store old values for activity log
+        changed_fields = {}
 
         # Set default priority to Low if not already set
         if "priority" not in ticket:
             ticket["priority"] = "Low"
 
-        # Capture old values before updates
-        for key in updates.keys():
+        # Capture old values and determine which fields actually changed
+        for key, value in updates.items():
             if key in ticket:
                 old_values[key] = ticket[key]
+            if ticket.get(key) != value:
+                changed_fields[key] = value
 
         # Apply updates
         for key, value in updates.items():
@@ -136,37 +139,43 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         container.replace_item(item=ticket["id"], body=ticket)
 
         # ── Log activity with proper admin identification ────────────────────
-        action_fields = {k: updates[k] for k in updates}
-        create_activity_log(
-            actor_email=admin_email,
-            actor_type="admin",
-            action="updated_ticket",
-            ticket_id=ticket_id,
-            updated_fields=action_fields,
-            old_values=old_values
-        )
+        if changed_fields:
+            create_activity_log(
+                actor_email=admin_email,
+                actor_type="admin",
+                action="updated_ticket",
+                ticket_id=ticket_id,
+                updated_fields=changed_fields,
+                old_values=old_values
+            )
 
         # ── Create notification for ticket creator ──────────────────────────
-        ticket_creator_email = str(ticket.get("email") or "").strip()
-        if ticket_creator_email:
-            # Build notification message from updated fields
-            updated_field_names = []
-            if "status" in updates:
-                updated_field_names.append(f"status to {updates['status']}")
-            if "priority" in updates:
-                updated_field_names.append(f"priority to {updates['priority']}")
-            if "assignedTeam" in updates:
-                updated_field_names.append(f"assigned team to {updates['assignedTeam']}")
-            
-            if updated_field_names:
-                fields_str = ", ".join(updated_field_names)
-                notification_message = f"Your ticket {ticket_id} has been updated: {fields_str}"
-                
+        if changed_fields:
+            ticket_creator_email = str(ticket.get("email") or "").strip()
+            if ticket_creator_email:
+                updated_field_names = []
+                if "status" in changed_fields:
+                    updated_field_names.append(f"status to {changed_fields['status']}")
+                if "priority" in changed_fields:
+                    updated_field_names.append(f"priority to {changed_fields['priority']}")
+                if "assignedTeam" in changed_fields:
+                    updated_field_names.append(f"assigned team to {changed_fields['assignedTeam']}")
+                if "category" in changed_fields:
+                    updated_field_names.append(f"category to {changed_fields['category']}")
+                if "adminNotes" in changed_fields:
+                    updated_field_names.append("admin notes updated")
+
+                if updated_field_names:
+                    fields_str = ", ".join(updated_field_names)
+                    notification_message = f"Your ticket {ticket_id} has been updated: {fields_str}"
+                else:
+                    notification_message = f"Your ticket {ticket_id} has been updated."
+
                 create_notification(
                     email=ticket_creator_email,
                     ticket_id=ticket_id,
                     message=notification_message,
-                    updated_fields=action_fields
+                    updated_fields=changed_fields
                 )
 
     except exceptions.CosmosHttpResponseError as e:
