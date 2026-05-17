@@ -64,15 +64,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 status_code=404,
                 mimetype="application/json"
             )
-
-        # ── Remove internal Cosmos fields ────────────────────────────────────
-        cosmos_internal = {"_rid", "_self", "_etag", "_attachments", "_ts"}
-        clean_notification = {k: v for k, v in updated_notification.items() if k not in cosmos_internal}
-
+        
         return func.HttpResponse(
             json.dumps({
                 "message": "Notification marked as read.",
-                "notification": clean_notification
+                "notification": updated_notification
             }),
             status_code=200,
             mimetype="application/json"

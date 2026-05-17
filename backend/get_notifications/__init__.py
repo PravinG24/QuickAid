@@ -24,20 +24,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # ── Retrieve notifications ───────────────────────────────────────────
         notifications = get_notifications_for_user(email, include_read=not unread_only)
         unread_count = get_unread_notification_count(email)
-
-        # ── Remove internal Cosmos fields ────────────────────────────────────
-        cosmos_internal = {"_rid", "_self", "_etag", "_attachments", "_ts"}
-        clean_notifications = [
-            {k: v for k, v in notif.items() if k not in cosmos_internal}
-            for notif in notifications
-        ]
-
+     
         return func.HttpResponse(
             json.dumps({
                 "email": email,
-                "notifications": clean_notifications,
+                "notifications": notifications,
                 "unread_count": unread_count,
-                "total_count": len(clean_notifications)
+                "total_count": len(notifications)
             }),
             status_code=200,
             mimetype="application/json"

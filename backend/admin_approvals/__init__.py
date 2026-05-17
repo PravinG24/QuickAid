@@ -4,7 +4,7 @@ import logging
 
 from shared.admin_auth import authorize_admin_request, _extract_bearer_token, _verify_entra_token
 from shared.admin_approvals import get_container, list_admin_requests, find_admin_request_by_email, set_admin_request_status, get_bootstrap_admin_email
-
+from shared.activity_log import create_activity_log
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("admin_approvals function triggered.")
@@ -76,6 +76,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         updated = set_admin_request_status(container, admin_id, next_status, reviewed_by)
         if not updated:
             return func.HttpResponse(json.dumps({"error": f"Admin request '{admin_id}' not found."}), status_code=404, mimetype="application/json")
+
+        # ── Log activity ─────────────────────────────────────────────────────
+        admin_email = str(
+            payload.get("preferred_username") or payload.get("email") or payload.get("upn") or "Admin"
+        ).strip().lower()
+
+        create_activity_log(
+            actor_email=admin_email,
+            actor_type="admin",
+            action=f"reviewed_admin_request_{next_status}",
+            ticket_id=admin_id,
+            updated_fields={"status": next_status, "reviewedBy": reviewed_by}
+        )
 
         return func.HttpResponse(json.dumps({"request": updated}), status_code=200, mimetype="application/json")
 

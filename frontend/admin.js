@@ -126,18 +126,6 @@ const adminSessionLabel = document.getElementById("adminSessionLabel");
 const adminLogoutBtn = document.getElementById("adminLogoutBtn");
 const adminBtnSignIn = document.getElementById("adminBtnSignIn");
 const adminBtnLogout = document.getElementById("adminBtnLogout");
-const adminBtnNotifications = document.getElementById("adminBtnNotifications");
-const adminNotifDropdown = document.getElementById("adminNotifDropdown");
-const adminNotifBadge = document.getElementById("adminNotifBadge");
-const adminNotifUnreadCount = document.getElementById("adminNotifUnreadCount");
-const adminNotifList = document.getElementById("adminNotifList");
-const adminBtnMarkAllRead = document.getElementById("adminBtnMarkAllRead");
-
-const adminNotifications = [
-  { id: "n1", title: "3 high-priority tickets need triage", time: "5m ago", read: false },
-  { id: "n2", title: "IT Network Services resolved TKT-309", time: "18m ago", read: false },
-  { id: "n3", title: "Weekly admin report is ready", time: "1h ago", read: true },
-];
 
 function isAdminApprovalManager() {
   return isAdminSession(session);
@@ -161,71 +149,10 @@ function updateAdminAuthUi() {
   }
 }
 
-function renderAdminNotifications() {
-  if (!adminNotifList) return;
-  adminNotifList.innerHTML = adminNotifications
-    .map(
-      (item) => `
-      <li class="notif-item ${item.read ? "notif-item-read" : "notif-item-unread"}" data-notif-id="${item.id}">
-        <span class="${item.read ? "notif-check" : "notif-dot"}" aria-hidden="true">${item.read ? "✓" : ""}</span>
-        <div class="notif-text">
-          <p class="notif-text-title">${item.title}</p>
-          <p class="notif-time">${item.time}</p>
-        </div>
-      </li>
-    `
-    )
-    .join("");
-}
-
-function updateAdminNotificationUi() {
-  const unread = adminNotifications.filter((item) => !item.read).length;
-  if (adminNotifUnreadCount) adminNotifUnreadCount.textContent = String(unread);
-  if (adminNotifBadge) {
-    adminNotifBadge.textContent = String(unread);
-    adminNotifBadge.classList.toggle("hidden", unread <= 0);
-  }
-  renderAdminNotifications();
-}
-
-function closeAdminNotifDropdown() {
-  adminNotifDropdown?.classList.add("hidden");
-  adminBtnNotifications?.setAttribute("aria-expanded", "false");
-}
-
-function toggleAdminNotifDropdown() {
-  if (!adminNotifDropdown || !adminBtnNotifications) return;
-  const willOpen = adminNotifDropdown.classList.contains("hidden");
-  adminNotifDropdown.classList.toggle("hidden", !willOpen);
-  adminBtnNotifications.setAttribute("aria-expanded", willOpen ? "true" : "false");
-}
-
 updateAdminAuthUi();
-updateAdminNotificationUi();
 
 adminLogoutBtn?.addEventListener("click", logoutAndRedirectToLogin);
 adminBtnLogout?.addEventListener("click", logoutAndRedirectToLogin);
-adminBtnNotifications?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  toggleAdminNotifDropdown();
-});
-adminBtnMarkAllRead?.addEventListener("click", () => {
-  adminNotifications.forEach((item) => {
-    item.read = true;
-  });
-  updateAdminNotificationUi();
-});
-
-document.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
-  const insideNotif = Boolean(target.closest(".notif-wrap"));
-  if (!insideNotif) closeAdminNotifDropdown();
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeAdminNotifDropdown();
-});
 
 const pageLinks = Array.from(document.querySelectorAll("[data-page-link]"));
 const pages = Array.from(document.querySelectorAll(".admin-page"));

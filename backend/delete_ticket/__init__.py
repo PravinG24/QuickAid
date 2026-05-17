@@ -7,6 +7,7 @@ from azure.cosmos import CosmosClient, exceptions
 from shared.secrets import get_secret
 from shared.admin_auth import _extract_bearer_token
 from shared.jwt_utils import verify_token
+from shared.activity_log import create_activity_log
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -77,6 +78,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # Delete by id (partition handling is left to the container configuration)
         container.delete_item(item=ticket["id"], partition_key=ticket["type"])
+
+        #── Log activity ─────────────────────────────────────────────────────
+        create_activity_log(
+            actor_email=token_email,
+            actor_type=token_role,
+            action="deleted_ticket",
+            ticket_id=ticket_id,
+            old_values={
+                "title": ticket.get("title"),
+                "status": ticket.get("status")
+            }
+        )
 
     except exceptions.CosmosHttpResponseError as e:
         logging.error(f"Cosmos DB error: {e}")

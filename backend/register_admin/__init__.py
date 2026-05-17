@@ -8,8 +8,11 @@ from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 
 from shared.secrets import get_secret
+from shared.activity_log import create_activity_log
+
 
 # ── Helper: hash password ────────────────────────────────────────────────────
+
 def hash_password(password: str) -> str:
     secret = get_secret("PasswordPepper", env_fallback="PASSWORD_SECRET")
     hashed = hmac.new(secret.encode(), password.encode(), hashlib.sha256)
@@ -129,6 +132,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
             mimetype="application/json"
         )
+
+    # ── Log activity ─────────────────────────────────────────────────────────
+    create_activity_log(
+        actor_email=email,
+        actor_type="admin",
+        action="requested_admin_access",
+        ticket_id=admin_id,
+        updated_fields={"name": name, "email": email, "status": "pending"}
+    )
 
     # ── Success ──────────────────────────────────────────────────────────────
     return func.HttpResponse(

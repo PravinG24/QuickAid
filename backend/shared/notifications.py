@@ -4,22 +4,28 @@ Handles creation, retrieval, and status updates for user notifications
 when admins update tickets.
 """
 
-import os
 import logging
 import uuid
+import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
-from azure.cosmos import CosmosClient
 
-from shared.secrets import get_secret
+from shared.blob_store import read_json_blob, write_json_blob
 
 
-def get_container():
-    """Get Cosmos DB container for notifications."""
-    cosmos_key = get_secret("COSMOS-KEY", env_fallback="COSMOS_KEY")
-    client = CosmosClient(url=os.environ["COSMOS_ENDPOINT"], credential=cosmos_key)
-    database = client.get_database_client(os.environ["COSMOS_DATABASE"])
-    return database.get_container_client(os.environ["COSMOS_CONTAINER"])
+STORE_CONTAINER = os.environ.get("BLOB_LOG_CONTAINER", "logs")
+STORE_BLOB = os.environ.get("BLOB_LOG_FILE", "activitylogs.json")
+
+
+def _load_store() -> Dict[str, Any]:
+    store = read_json_blob(STORE_CONTAINER, STORE_BLOB)
+    store.setdefault("activity_logs", [])
+    store.setdefault("notifications", [])
+    return store
+
+
+def _save_store(store: Dict[str, Any]) -> bool:
+    return write_json_blob(store, STORE_CONTAINER, STORE_BLOB)
 
 
 def create_notification(
@@ -40,12 +46,11 @@ def create_notification(
         The created notification document, or None on error
     """
     try:
-        container = get_container()
+        store = _load_store()
         now = datetime.now(timezone.utc)
-        
+
         notification = {
             "id": f"NOTIF-{uuid.uuid4()}",
-            "type": "notification",
             "email": email.lower().strip(),
             "ticket_id": ticket_id,
             "message": message,
@@ -53,14 +58,15 @@ def create_notification(
             "timestamp": now.isoformat(),
             "read": False,
         }
-        
-        container.create_item(body=notification)
+
+        store["notifications"].append(notification)
+        _save_store(store)
+
         logging.info(
             "Notification created for %s: ticket=%s",
-            email, ticket_id
+            email, ticket_id,
         )
         return notification
-        
     except Exception as exc:
         logging.error("Failed to create notification for %s: %s", email, exc)
         return None
@@ -77,24 +83,14 @@ def get_notifications_for_user(email: str, include_read: bool = True) -> List[Di
         List of notification documents sorted by timestamp (newest first)
     """
     try:
-        container = get_container()
         normalized_email = email.lower().strip()
-        
-        if include_read:
-            query = "SELECT * FROM c WHERE c.type = 'notification' AND c.email = @email ORDER BY c.timestamp DESC"
-            params = [{"name": "@email", "value": normalized_email}]
-        else:
-            query = "SELECT * FROM c WHERE c.type = 'notification' AND c.email = @email AND c.read = false ORDER BY c.timestamp DESC"
-            params = [{"name": "@email", "value": normalized_email}]
-        
-        notifications = list(container.query_items(
-            query=query,
-            parameters=params,
-            enable_cross_partition_query=True
-        ))
-        
-        return notifications
-        
+        store = _load_store()
+        notifications = [
+            notif for notif in store.get("notifications", [])
+            if str(notif.get("email", "")).lower().strip() == normalized_email
+            and (include_read or notif.get("read") is False)
+        ]
+        return sorted(notifications, key=lambda item: item.get("timestamp", ""), reverse=True)
     except Exception as exc:
         logging.error("Failed to retrieve notifications for %s: %s", email, exc)
         return []
@@ -110,20 +106,14 @@ def get_unread_notification_count(email: str) -> int:
         Count of unread notifications
     """
     try:
-        container = get_container()
         normalized_email = email.lower().strip()
-        
-        query = "SELECT VALUE COUNT(1) FROM c WHERE c.type = 'notification' AND c.email = @email AND c.read = false"
-        params = [{"name": "@email", "value": normalized_email}]
-        
-        results = list(container.query_items(
-            query=query,
-            parameters=params,
-            enable_cross_partition_query=True
-        ))
-        
-        return results[0] if results else 0
-        
+        store = _load_store()
+        return sum(
+            1
+            for notif in store.get("notifications", [])
+            if str(notif.get("email", "")).lower().strip() == normalized_email
+            and notif.get("read") is False
+        )
     except Exception as exc:
         logging.error("Failed to get unread notification count for %s: %s", email, exc)
         return 0
@@ -139,29 +129,19 @@ def mark_notification_as_read(notification_id: str) -> Optional[Dict[str, Any]]:
         The updated notification document, or None on error
     """
     try:
-        container = get_container()
-        
-        # Find the notification
-        query = "SELECT * FROM c WHERE c.type = 'notification' AND c.id = @id"
-        params = [{"name": "@id", "value": notification_id}]
-        
-        results = list(container.query_items(
-            query=query,
-            parameters=params,
-            enable_cross_partition_query=True
-        ))
-        
-        if not results:
+        store = _load_store()
+        notification = next(
+            (notif for notif in store.get("notifications", []) if notif.get("id") == notification_id),
+            None,
+        )
+        if not notification:
             logging.warning("Notification %s not found", notification_id)
             return None
-        
-        notification = results[0]
+
         notification["read"] = True
-        
-        updated = container.replace_item(item=notification["id"], body=notification)
+        _save_store(store)
         logging.info("Notification %s marked as read", notification_id)
-        return updated
-        
+        return notification
     except Exception as exc:
         logging.error("Failed to mark notification %s as read: %s", notification_id, exc)
         return None
@@ -177,27 +157,20 @@ def mark_all_notifications_as_read(email: str) -> bool:
         True if successful, False otherwise
     """
     try:
-        container = get_container()
         normalized_email = email.lower().strip()
-        
-        # Find all unread notifications
-        query = "SELECT * FROM c WHERE c.type = 'notification' AND c.email = @email AND c.read = false"
-        params = [{"name": "@email", "value": normalized_email}]
-        
-        notifications = list(container.query_items(
-            query=query,
-            parameters=params,
-            enable_cross_partition_query=True
-        ))
-        
-        # Mark each as read
+        store = _load_store()
+        notifications = store.get("notifications", [])
+        updated = False
         for notif in notifications:
-            notif["read"] = True
-            container.replace_item(item=notif["id"], body=notif)
-        
-        logging.info("Marked %d notifications as read for %s", len(notifications), email)
+            if str(notif.get("email", "")).lower().strip() == normalized_email and notif.get("read") is False:
+                notif["read"] = True
+                updated = True
+
+        if updated:
+            _save_store(store)
+
+        logging.info("Marked notifications as read for %s", email)
         return True
-        
     except Exception as exc:
         logging.error("Failed to mark all notifications as read for %s: %s", email, exc)
         return False

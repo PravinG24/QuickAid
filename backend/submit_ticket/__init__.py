@@ -9,6 +9,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 from shared.secrets import get_secret
+from shared.activity_log import create_activity_log
 
 
 def send_confirmation_email(email: str, ticket_id: str, title: str, requester_name: str) -> bool:
@@ -189,6 +190,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     send_confirmation_email(email, ticket_id, title, requester_name)
+
+    # ── Log activity ─────────────────────────────────────────────────────────
+    create_activity_log(
+        actor_email=email,
+        actor_type="user",
+        action="submitted_ticket",
+        ticket_id=ticket_id,
+        updated_fields={
+            "title": title,
+            "category": category,
+            "priority": priority
+        }
+    )
 
     return func.HttpResponse(
         json.dumps({
