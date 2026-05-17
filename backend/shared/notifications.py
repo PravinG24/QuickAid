@@ -60,7 +60,9 @@ def create_notification(
         }
 
         store["notifications"].append(notification)
-        _save_store(store)
+        if not _save_store(store):
+            logging.error("Failed to persist notification to blob storage.")
+            return None
 
         logging.info(
             "Notification created for %s: ticket=%s",
@@ -139,7 +141,10 @@ def mark_notification_as_read(notification_id: str) -> Optional[Dict[str, Any]]:
             return None
 
         notification["read"] = True
-        _save_store(store)
+        saved = _save_store(store)
+        if not saved:
+            logging.error("Failed saving blob")
+            return None
         logging.info("Notification %s marked as read", notification_id)
         return notification
     except Exception as exc:
@@ -167,7 +172,11 @@ def mark_all_notifications_as_read(email: str) -> bool:
                 updated = True
 
         if updated:
-            _save_store(store)
+            saved = _save_store(store)
+    
+        if not saved:
+            logging.error("Failed saving blob")
+            return None
 
         logging.info("Marked notifications as read for %s", email)
         return True

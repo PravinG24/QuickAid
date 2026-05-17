@@ -17,7 +17,12 @@ def get_blob_service_client() -> BlobServiceClient:
         "BLOB_STORAGE_CONNECTION_STRING",
         env_fallback="BLOB_STORAGE_CONNECTION_STRING",
     )
-    return BlobServiceClient.from_connection_string(connection_string)
+    if not connection_string or not str(connection_string).strip():
+        raise RuntimeError(
+            "BLOB_STORAGE_CONNECTION_STRING is not configured. "
+            "Set it in local.settings.json or App Settings."
+        )
+    return BlobServiceClient.from_connection_string(str(connection_string).strip())
 
 
 def get_blob_client(

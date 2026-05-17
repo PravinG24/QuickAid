@@ -65,7 +65,9 @@ def create_activity_log(
         }
 
         store["activity_logs"].append(log_entry)
-        _save_store(store)
+        if not _save_store(store):
+            logging.error("Failed to persist activity log entry to blob storage.")
+            return None
 
         logging.info(
             "Activity logged: actor=%s type=%s action=%s ticket=%s",
