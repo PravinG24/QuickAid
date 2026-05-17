@@ -42,19 +42,13 @@ def get_blob_service_client() -> BlobServiceClient:
     except RuntimeError:
         connection_string = None
 
-    if connection_string and str(connection_string).strip():
-        try:
-            return BlobServiceClient.from_connection_string(str(connection_string).strip())
-        except Exception as exc:
-            logging.warning(
-                "Blob connection string auth failed, falling back to Azure AD auth: %s",
-                exc,
-            )
-            if not account_url:
-                account_url = _parse_storage_account_url_from_connection_string(connection_string)
-
     if account_url:
+        logging.info("Using Azure AD auth for Blob storage via account URL: %s", account_url)
         return BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+
+    if connection_string and str(connection_string).strip():
+        logging.info("Using Blob storage connection string for auth.")
+        return BlobServiceClient.from_connection_string(str(connection_string).strip())
 
     raise RuntimeError(
         "Blob storage cannot be authenticated. Set BLOB_STORAGE_ACCOUNT_URL and ensure Azure credentials are available "
