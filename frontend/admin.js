@@ -190,6 +190,8 @@ const sharedTicketView = window.QuickAidTicketView || {};
 const BULK_UNCHANGED_VALUE = "__unchanged__";
 const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
 const overviewPriorityOptions = ["High", "Medium", "Low"];
+const INITIAL_TICKET_STATUS = "Open";
+const INITIAL_TICKET_TEAM = "Unassigned";
 const overviewTeamOptions = [
   "Unassigned",
   "IT Network Services",
@@ -242,13 +244,23 @@ function getTicketUpdatedTimestamp(ticket) {
 
 function hasTicketHistory(ticket) {
   if (!ticket) return false;
-  const timelineLength = Array.isArray(ticket.timeline) ? ticket.timeline.length : 0;
-  if (timelineLength > 0) return true;
+  const timelineHasAdminUpdates = Array.isArray(ticket.timeline)
+    ? ticket.timeline.some((entry) => String(entry?.label || "").toLowerCase().startsWith("updated ticket"))
+    : false;
+  if (timelineHasAdminUpdates) return true;
   return getTicketUpdatedTimestamp(ticket) > getTicketBaselineTimestamp(ticket);
 }
 
 function getPriorityDisplayValue(ticket) {
   return hasTicketHistory(ticket) ? ticket?.priority || "Medium" : BULK_UNCHANGED_VALUE;
+}
+
+function getStatusDisplayValue(ticket) {
+  return hasTicketHistory(ticket) ? ticket?.status || INITIAL_TICKET_STATUS : INITIAL_TICKET_STATUS;
+}
+
+function getTeamDisplayValue(ticket) {
+  return hasTicketHistory(ticket) ? ticket?.assignedTo || INITIAL_TICKET_TEAM : INITIAL_TICKET_TEAM;
 }
 
 function getRowControlState(row, controlName) {
@@ -1166,9 +1178,9 @@ function syncOverviewRowControls(ticket) {
   const prioritySelect = row.querySelector('select[data-control="priority"]');
   const teamSelect = row.querySelector('select[data-control="team"]');
   const selectCheckbox = row.querySelector('input[data-control="select-ticket"]');
-  if (statusSelect instanceof HTMLSelectElement) statusSelect.value = ticket.status;
+  if (statusSelect instanceof HTMLSelectElement) statusSelect.value = getStatusDisplayValue(ticket);
   if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = getPriorityDisplayValue(ticket);
-  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTo;
+  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = getTeamDisplayValue(ticket);
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
@@ -1699,6 +1711,7 @@ async function renderTicketDetails(ticket) {
   if (latestTimestamp > 0) {
     ticket.updated_at = new Date(latestTimestamp).toISOString();
   }
+  const hasHistory = hasTicketHistory(ticket);
 
   const extraSectionHtml = `
     <section class="detail-block">
@@ -1710,7 +1723,7 @@ async function renderTicketDetails(ticket) {
             ${overviewStatusOptions
               .map(
                 (status) =>
-                  `<option value="${escapeHtml(status)}" ${status === ticket.status ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(status)}" ${status === getStatusDisplayValue(ticket) ? "selected" : ""}>${escapeHtml(
                     status
                   )}</option>`
               )
@@ -1720,11 +1733,11 @@ async function renderTicketDetails(ticket) {
         <label>
           <span>Priority</span>
           <select id="adminModalPrioritySelect" class="table-select">
-            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}">unchanged</option>
+            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}" ${!hasHistory ? "selected" : ""}>unchanged</option>
             ${overviewPriorityOptions
               .map(
                 (priority) =>
-                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(priority)}" ${hasHistory && priority === ticket.priority ? "selected" : ""}>${escapeHtml(
                     priority
                   )}</option>`
               )
@@ -1737,7 +1750,7 @@ async function renderTicketDetails(ticket) {
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(team)}" ${team === getTeamDisplayValue(ticket) ? "selected" : ""}>${escapeHtml(
                     team
                   )}</option>`
               )
@@ -2026,7 +2039,7 @@ function renderManageTickets(tickets) {
             ${overviewPriorityOptions
               .map(
                 (priority) =>
-                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(priority)}</option>`
+                  `<option value="${escapeHtml(priority)}" ${hasTicketHistory(ticket) && priority === ticket.priority ? "selected" : ""}>${escapeHtml(priority)}</option>`
               )
               .join("")}
           </select>
@@ -2036,7 +2049,7 @@ function renderManageTickets(tickets) {
             ${overviewStatusOptions
               .map(
                 (status) =>
-                  `<option value="${escapeHtml(status)}" ${status === ticket.status ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(status)}" ${status === getStatusDisplayValue(ticket) ? "selected" : ""}>${escapeHtml(
                     status
                   )}</option>`
               )
@@ -2048,7 +2061,7 @@ function renderManageTickets(tickets) {
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(team)}</option>`
+                  `<option value="${escapeHtml(team)}" ${team === getTeamDisplayValue(ticket) ? "selected" : ""}>${escapeHtml(team)}</option>`
               )
               .join("")}
           </select>

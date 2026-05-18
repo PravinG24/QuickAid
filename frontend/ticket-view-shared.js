@@ -58,7 +58,7 @@ function quickAidRenderTimeline(items) {
           <div class="timeline-dot"></div>
           <div class="timeline-body">
             <strong>${quickAidEscapeHtml(entry.label || "Event")}</strong>
-            <div class="ticket-shared-muted"> "Admin" • ${quickAidEscapeHtml(
+            <div class="ticket-shared-muted"> Admin • ${quickAidEscapeHtml(
         quickAidFormatDateTime(entry.at)
       )}</div>
           </div>

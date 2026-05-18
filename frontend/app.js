@@ -365,7 +365,6 @@ function loadDraft() {
       draftHint,
       draft.savedAt ? `Draft restored from ${formatDateTime(draft.savedAt)}.` : "Draft restored."
     );
-    setTextContent(slaHint, "Priority will be assigned by admin triage after review.");
   } catch {
     // ignore invalid draft payload
   }
@@ -1442,7 +1441,6 @@ form.addEventListener("reset", () => {
     setTextContent(attachmentInfo, "");
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
-    setTextContent(slaHint, "Priority will be assigned by admin triage after review.");
   }, 0);
 });
 

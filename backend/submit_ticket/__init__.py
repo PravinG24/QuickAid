@@ -346,13 +346,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "hasImage": image_data is not None,
         "createdAt": now.isoformat(),
         "updatedAt": now.isoformat(),
-        "timeline": [
-            {
-                "label": "Ticket created",
-                "by": requester_name,
-                "at": now.isoformat(),
-            }
-        ],
     }
 
     if image_data:

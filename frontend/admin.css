@@ -1201,9 +1201,9 @@ td:first-child {
 }
 
 th {
-  color: var(--text-muted);
+  color: var(--primary-strong);
   font-weight: 600;
-  background: #d4e5fd;
+  background: var(--primary-soft);
 }
 
 tbody tr:hover {
