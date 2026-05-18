@@ -7,14 +7,20 @@
     <title>QuickAid - Campus Service Desk Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./branding.css" />
     <link rel="stylesheet" href="./home.css" />
+    <script src="./branding.js" defer></script>
   </head>
   <body class="home-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    
+
     <header class="home-header">
       <a class="home-brand" href="./index.html" aria-label="QuickAid home">
-        <span class="home-logo" aria-hidden="true">Q</span>
+        <span class="home-logo brand-icon" data-brand-icon aria-hidden="true"></span>
         <div class="brand-text">
           <strong>QuickAid</strong>
           <small>Service Desk</small>
@@ -32,7 +38,6 @@
     </header>
 
     <main id="main-content">
-      <!-- Hero Section -->
       <section class="home-hero">
         <div class="hero-copy">
           <div class="hero-badge">Streamline Campus Operations</div>
@@ -41,20 +46,20 @@
             Manage support requests efficiently with role-based access, real-time status tracking, and automated workflows. Built for students, staff, and administrators.
           </p>
           <div class="hero-actions">
-            <a class="home-button primary" href="./login.html">Access the desk →</a>
+            <a class="home-button primary" href="./login.html">Access the desk &rarr;</a>
             <a class="home-button secondary" href="./register.html">Create account</a>
           </div>
           <div class="hero-features">
             <div class="feature-chip">
-              <span class="chip-icon">✓</span>
+              <span class="chip-icon">&#10003;</span>
               <span>Instant ticket tracking</span>
             </div>
             <div class="feature-chip">
-              <span class="chip-icon">✓</span>
+              <span class="chip-icon">&#10003;</span>
               <span>Multi-team support</span>
             </div>
             <div class="feature-chip">
-              <span class="chip-icon">✓</span>
+              <span class="chip-icon">&#10003;</span>
               <span>Built-in SLA monitoring</span>
             </div>
           </div>
@@ -110,12 +115,12 @@
                         <div class="summary-ticket active">
                           <span class="ticket-code">QKA-2026-104</span>
                           <strong>Portal login issue</strong>
-                          <small>IT Support · High priority</small>
+                          <small>IT Support &middot; High priority</small>
                         </div>
                         <div class="summary-ticket">
                           <span class="ticket-code">QKA-2026-098</span>
                           <strong>Air conditioner not cooling</strong>
-                          <small>Operations · In progress</small>
+                          <small>Operations &middot; In progress</small>
                         </div>
                       </div>
                       <div class="summary-detail">
@@ -230,17 +235,17 @@
                       <div class="admin-column">
                         <span>Queue</span>
                         <strong>Portal access blocked</strong>
-                        <small>Requester · IT · High</small>
+                        <small>Requester &middot; IT &middot; High</small>
                       </div>
                       <div class="admin-column">
                         <span>Assignment</span>
                         <strong>Operations Team</strong>
-                        <small>Facilities · Medium</small>
+                        <small>Facilities &middot; Medium</small>
                       </div>
                       <div class="admin-column">
                         <span>Status</span>
                         <strong>Resolved today</strong>
-                        <small>Finance · Closed</small>
+                        <small>Finance &middot; Closed</small>
                       </div>
                     </div>
                     <div class="admin-footer-preview">
@@ -256,106 +261,145 @@
         </div>
       </section>
 
-      <!-- Features Section -->
       <section class="features-section" id="features">
-        <div class="section-header">
-          <h2>Powerful features for modern support</h2>
-          <p>Everything you need to manage campus service requests at scale</p>
-        </div>
+        <div class="section-shell">
+          <div class="section-header">
+            <span class="section-kicker">Product Capabilities</span>
+            <h2>Powerful features for modern support</h2>
+            <p>Everything you need to manage campus service requests at scale</p>
+          </div>
 
-        <div class="features-grid">
-          <div class="feature-card">
-            <div class="feature-icon">📝</div>
-            <h3>Smart Intake</h3>
-            <p>Capture request details with structured forms. Categorize by department, priority, and type automatically.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📊</div>
-            <h3>Live Dashboard</h3>
-            <p>Monitor queue health, SLA compliance, and team workload in real time. Get visibility into what matters.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">👥</div>
-            <h3>Team Management</h3>
-            <p>Organize support teams, assign permissions, and route tickets to the right specialists instantly.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3>Workflow Automation</h3>
-            <p>Set up rules to auto-assign, escalate, or resolve tickets based on priority and category.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🔒</div>
-            <h3>Role-Based Access</h3>
-            <p>Secure permissions ensure students see their tickets, admins see operations and reporting tools.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📱</div>
-            <h3>Always Available</h3>
-            <p>Access from any device. Track requests on desktop or mobile, anytime, anywhere.</p>
+          <div class="features-grid">
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">INT</span>
+                <span class="feature-meta">Structured capture</span>
+              </div>
+              <h3>Smart Intake</h3>
+              <p>Capture request details with structured forms. Categorize by department, priority, and type automatically.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">VIS</span>
+                <span class="feature-meta">Queue visibility</span>
+              </div>
+              <h3>Live Dashboard</h3>
+              <p>Monitor queue health, SLA compliance, and team workload in real time. Get visibility into what matters.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">OPS</span>
+                <span class="feature-meta">Team routing</span>
+              </div>
+              <h3>Team Management</h3>
+              <p>Organize support teams, assign permissions, and route tickets to the right specialists instantly.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">AUTO</span>
+                <span class="feature-meta">Policy logic</span>
+              </div>
+              <h3>Workflow Automation</h3>
+              <p>Set up rules to auto-assign, escalate, or resolve tickets based on priority and category.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">SAFE</span>
+                <span class="feature-meta">Permission control</span>
+              </div>
+              <h3>Role-Based Access</h3>
+              <p>Secure permissions ensure students see their tickets, admins see operations and reporting tools.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card-top">
+                <span class="feature-icon" aria-hidden="true">24/7</span>
+                <span class="feature-meta">Every device</span>
+              </div>
+              <h3>Always Available</h3>
+              <p>Access from any device. Track requests on desktop or mobile, anytime, anywhere.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <!-- Workflow Section -->
       <section class="workflow-section" id="workflow">
-        <div class="section-header">
-          <h2>How QuickAid works</h2>
-          <p>A streamlined process from request to resolution</p>
-        </div>
+        <div class="section-shell section-shell-bright">
+          <div class="section-header">
+            <span class="section-kicker">Service Flow</span>
+            <h2>How QuickAid works</h2>
+            <p>A streamlined process from request to resolution</p>
+          </div>
 
-        <div class="workflow-grid">
-          <div class="workflow-step">
-            <div class="step-number">1</div>
-            <h3>Submit</h3>
-            <p>Students and staff submit requests through an intuitive form. Include attachments, category, and priority.</p>
-          </div>
-          <div class="workflow-step">
-            <div class="step-number">2</div>
-            <h3>Triage</h3>
-            <p>Support teams review incoming tickets, assign ownership, and set SLAs based on priority and impact.</p>
-          </div>
-          <div class="workflow-step">
-            <div class="step-number">3</div>
-            <h3>Update</h3>
-            <p>Teams collaborate and update requesters on progress. Add status changes and resolution notes.</p>
-          </div>
-          <div class="workflow-step">
-            <div class="step-number">4</div>
-            <h3>Close</h3>
-            <p>Mark tickets as resolved. Requesters confirm satisfaction. Closed tickets remain searchable and auditable.</p>
+          <div class="workflow-grid">
+            <article class="workflow-step">
+              <div class="workflow-step-top">
+                <div class="step-number">1</div>
+                <span class="step-kicker">Start</span>
+              </div>
+              <h3>Submit</h3>
+              <p>Students and staff submit requests through an intuitive form. Include attachments, category, and priority.</p>
+            </article>
+            <article class="workflow-step">
+              <div class="workflow-step-top">
+                <div class="step-number">2</div>
+                <span class="step-kicker">Review</span>
+              </div>
+              <h3>Triage</h3>
+              <p>Support teams review incoming tickets, assign ownership, and set SLAs based on priority and impact.</p>
+            </article>
+            <article class="workflow-step">
+              <div class="workflow-step-top">
+                <div class="step-number">3</div>
+                <span class="step-kicker">Collaborate</span>
+              </div>
+              <h3>Update</h3>
+              <p>Teams collaborate and update requesters on progress. Add status changes and resolution notes.</p>
+            </article>
+            <article class="workflow-step">
+              <div class="workflow-step-top">
+                <div class="step-number">4</div>
+                <span class="step-kicker">Resolve</span>
+              </div>
+              <h3>Close</h3>
+              <p>Mark tickets as resolved. Requesters confirm satisfaction. Closed tickets remain searchable and auditable.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <!-- Benefits Section -->
       <section class="benefits-section" id="benefits">
-        <div class="section-header">
-          <h2>Why campuses choose QuickAid</h2>
-          <p>Designed by support professionals for support professionals</p>
-        </div>
+        <div class="section-shell section-shell-dark">
+          <div class="section-header benefits-header">
+            <span class="section-kicker">Operational Impact</span>
+            <h2>Why campuses choose QuickAid</h2>
+            <p>Designed by support professionals for support professionals</p>
+          </div>
 
-        <div class="benefits-grid">
-          <div class="benefit-item">
-            <h3>Faster resolution times</h3>
-            <p>Clear assignment and SLA tracking mean issues get solved quicker. Track time to resolution and celebrate wins.</p>
-          </div>
-          <div class="benefit-item">
-            <h3>Better visibility</h3>
-            <p>Everyone knows what's happening. Requesters track their tickets. Teams see queue health. Admins get real metrics.</p>
-          </div>
-          <div class="benefit-item">
-            <h3>Reduced silos</h3>
-            <p>Stop using email and spreadsheets. One unified inbox for all requests from all departments and teams.</p>
-          </div>
-          <div class="benefit-item">
-            <h3>Audit-ready</h3>
-            <p>Complete history of all requests, assignments, updates, and resolutions. Compliance and accountability built in.</p>
+          <div class="benefits-grid">
+            <article class="benefit-item">
+              <span class="benefit-marker">01</span>
+              <h3>Faster resolution times</h3>
+              <p>Clear assignment and SLA tracking mean issues get solved quicker. Track time to resolution and celebrate wins.</p>
+            </article>
+            <article class="benefit-item">
+              <span class="benefit-marker">02</span>
+              <h3>Better visibility</h3>
+              <p>Everyone knows what&apos;s happening. Requesters track their tickets. Teams see queue health. Admins get real metrics.</p>
+            </article>
+            <article class="benefit-item">
+              <span class="benefit-marker">03</span>
+              <h3>Reduced silos</h3>
+              <p>Stop using email and spreadsheets. One unified inbox for all requests from all departments and teams.</p>
+            </article>
+            <article class="benefit-item">
+              <span class="benefit-marker">04</span>
+              <h3>Audit-ready</h3>
+              <p>Complete history of all requests, assignments, updates, and resolutions. Compliance and accountability built in.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <!-- CTA Section -->
       <section class="cta-section">
         <div class="cta-content">
           <h2>Ready to modernize your service desk?</h2>

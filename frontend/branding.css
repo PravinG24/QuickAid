@@ -1,0 +1,35 @@
+:root {
+  --brand-icon-box-size: 2.75rem;
+  --brand-icon-radius: 0.95rem;
+  --brand-icon-padding-inline: 0.34rem;
+  --brand-icon-glyph-size: 1.02rem;
+  --brand-icon-letter-spacing: -0.09em;
+  --brand-icon-background: linear-gradient(135deg, oklch(46% 0.12 253) 0%, oklch(36% 0.11 253) 100%);
+  --brand-icon-color: #ffffff;
+  --brand-icon-border: 1px solid rgba(255, 255, 255, 0.18);
+  --brand-icon-shadow: 0 14px 30px rgba(37, 99, 235, 0.2);
+}
+
+.brand-icon {
+  width: var(--brand-icon-box-size);
+  height: var(--brand-icon-box-size);
+  min-width: var(--brand-icon-box-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--brand-icon-padding-inline);
+  border-radius: var(--brand-icon-radius);
+  border: var(--brand-icon-border);
+  background: var(--brand-icon-background);
+  box-shadow: var(--brand-icon-shadow);
+  color: var(--brand-icon-color);
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  font-size: var(--brand-icon-glyph-size);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--brand-icon-letter-spacing);
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
