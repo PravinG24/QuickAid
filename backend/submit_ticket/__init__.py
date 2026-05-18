@@ -4,6 +4,7 @@ import json
 import os
 import base64
 import html
+import threading
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 from sendgrid import SendGridAPIClient
@@ -125,6 +126,19 @@ def send_admin_notification(admin_email: str, ticket_id: str, title: str, reques
             </html>
         """,
     )
+
+
+def _queue_notification_send(send_fn, *args) -> None:
+    """Fire-and-forget email send so ticket creation does not block on SendGrid."""
+
+    def _runner() -> None:
+        try:
+            send_fn(*args)
+        except Exception as exc:
+            logging.error("Background notification dispatch failed: %s", exc)
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -276,16 +290,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
         )
 
-    submitter_email_sent = send_confirmation_email(email, ticket_id, title, requester_name)
     admin_email = _resolve_admin_notification_email()
-    admin_email_sent = False
+    _queue_notification_send(send_confirmation_email, email, ticket_id, title, requester_name)
     if admin_email and admin_email != email:
-        admin_email_sent = send_admin_notification(admin_email, ticket_id, title, requester_name, email, category, priority, description)
-
-    if not submitter_email_sent:
-        logging.warning("Submitter confirmation email did not send for ticket %s (%s).", ticket_id, email)
-    if admin_email and admin_email != email and not admin_email_sent:
-        logging.warning("Admin notification email did not send for ticket %s (%s).", ticket_id, admin_email)
+        _queue_notification_send(
+            send_admin_notification,
+            admin_email,
+            ticket_id,
+            title,
+            requester_name,
+            email,
+            category,
+            priority,
+            description,
+        )
 
     return func.HttpResponse(
         json.dumps({
