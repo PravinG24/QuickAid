@@ -237,6 +237,55 @@ function initializeBulkDrawerSelects() {
   }
 }
 
+function getTicketBaselineTimestamp(ticket) {
+  const createdValue = ticket?.created_at || ticket?.createdAt || ticket?.submitted_at || "";
+  const createdTime = new Date(createdValue).getTime();
+  return Number.isFinite(createdTime) ? createdTime : 0;
+}
+
+function getTicketUpdatedTimestamp(ticket) {
+  const updatedValue = ticket?.updated_at || ticket?.updatedAt || ticket?.created_at || "";
+  const updatedTime = new Date(updatedValue).getTime();
+  return Number.isFinite(updatedTime) ? updatedTime : 0;
+}
+
+function hasTicketHistory(ticket) {
+  if (!ticket) return false;
+  const timelineLength = Array.isArray(ticket.timeline) ? ticket.timeline.length : 0;
+  if (timelineLength > 0) return true;
+  return getTicketUpdatedTimestamp(ticket) > getTicketBaselineTimestamp(ticket);
+}
+
+function getRowControlState(row, controlName) {
+  if (!(row instanceof HTMLElement)) return { touched: false };
+  const raw = row.dataset[`dirty${controlName}`];
+  return { touched: raw === "true" };
+}
+
+function setRowControlTouched(row, controlName, touched = true) {
+  if (!(row instanceof HTMLElement)) return;
+  row.dataset[`dirty${controlName}`] = touched ? "true" : "false";
+}
+
+function resetRowControlTouched(row) {
+  if (!(row instanceof HTMLElement)) return;
+  row.dataset.dirtyStatus = "false";
+  row.dataset.dirtyPriority = "false";
+  row.dataset.dirtyTeam = "false";
+}
+
+const bulkDrawerDirtyState = {
+  status: false,
+  priority: false,
+  team: false,
+};
+
+function resetBulkDrawerDirtyState() {
+  bulkDrawerDirtyState.status = false;
+  bulkDrawerDirtyState.priority = false;
+  bulkDrawerDirtyState.team = false;
+}
+
 const nowForAdminMock = new Date();
 function isoFromOffset({ days = 0, months = 0, years = 0, hours = 10, minutes = 0 }) {
   const date = new Date(nowForAdminMock);
@@ -671,6 +720,7 @@ function closeBulkEditDrawer() {
 }
 
 function openBulkEditDrawer() {
+  resetBulkDrawerDirtyState();
   if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "Open";
   if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) bulkDrawerPrioritySelect.value = BULK_UNCHANGED_VALUE;
   if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "Unassigned";
@@ -692,11 +742,11 @@ function updateBulkDrawerSummary() {
     return;
   }
   const reviewItems = [];
-  if (nextStatus) reviewItems.push(`status to ${nextStatus}`);
-  if (nextPriority) reviewItems.push(`priority to ${nextPriority}`);
-  if (nextTeam) reviewItems.push(`assigned team to ${nextTeam}`);
+  if (bulkDrawerDirtyState.status) reviewItems.push(`status to ${nextStatus || "Open"}`);
+  if (bulkDrawerDirtyState.priority && nextPriority) reviewItems.push(`priority to ${nextPriority}`);
+  if (bulkDrawerDirtyState.team) reviewItems.push(`assigned team to ${nextTeam || "Unassigned"}`);
   if (!reviewItems.length) {
-    bulkDrawerSummary.textContent = "Choose one or more fields to update.";
+    bulkDrawerSummary.textContent = "Choose priority, status, team, or all.";
     return;
   }
   bulkDrawerSummary.textContent = `Will update ${reviewItems.join(", ")} for ${selectedCount} ticket(s).`;
@@ -708,7 +758,11 @@ function updateBulkApplyState() {
   const nextStatus = getSelectValueOrEmpty(bulkDrawerStatusSelect);
   const nextPriority = getSelectValueOrEmpty(bulkDrawerPrioritySelect);
   const nextTeam = getSelectValueOrEmpty(bulkDrawerTeamSelect);
-  const hasChanges = Boolean(nextStatus || nextPriority || nextTeam);
+  const hasChanges = Boolean(
+    bulkDrawerDirtyState.status ||
+      (bulkDrawerDirtyState.priority && nextPriority) ||
+      bulkDrawerDirtyState.team
+  );
   const canApply = selectedCount > 0 && hasChanges;
   bulkDrawerApplyBtn.disabled = !canApply;
   bulkDrawerApplyBtn.textContent = canApply ? "Apply Changes" : "Select Changes";
@@ -807,10 +861,15 @@ function getManageRowDraftValues(ticket, row) {
   const prioritySelect = row.querySelector('select[data-control="priority"]');
   const teamSelect = row.querySelector('select[data-control="team"]');
   const rawPriority = prioritySelect instanceof HTMLSelectElement ? String(prioritySelect.value || ticket.priority) : ticket.priority;
+  const priorityState = getRowControlState(row, "Priority");
+  const teamState = getRowControlState(row, "Team");
   return {
     status: statusSelect instanceof HTMLSelectElement ? String(statusSelect.value || ticket.status) : ticket.status,
-    priority: rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority,
-    assignedTo: teamSelect instanceof HTMLSelectElement ? String(teamSelect.value || ticket.assignedTo) : ticket.assignedTo,
+    priority: !priorityState.touched || rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority,
+    assignedTo:
+      !teamState.touched || !(teamSelect instanceof HTMLSelectElement)
+        ? ticket.assignedTo
+        : String(teamSelect.value || "Unassigned"),
   };
 }
 
@@ -819,7 +878,9 @@ function updateManageRowDirtyState(row, ticket) {
   const nextValues = getManageRowDraftValues(ticket, row);
   const changes = collectTicketFieldChanges(ticket, nextValues);
   const changeMap = new Map(changes.map((entry) => [entry.key, entry]));
+  const hasHistory = hasTicketHistory(ticket);
   row.classList.toggle("is-dirty", changes.length > 0);
+  row.classList.toggle("is-historically-updated", hasHistory && changes.length === 0);
 
   row.querySelectorAll("select[data-control]").forEach((select) => {
     if (!(select instanceof HTMLSelectElement)) return;
@@ -830,22 +891,10 @@ function updateManageRowDirtyState(row, ticket) {
     select.classList.toggle("is-unchanged", !hasChanged);
   });
 
-  const review = row.querySelector(".table-change-review");
-  if (review instanceof HTMLElement) {
-    review.innerHTML = changes.length
-      ? changes
-          .map(
-            (change) =>
-              `<span class="change-pill modified">${escapeHtml(change.label)}: ${escapeHtml(change.from)} -> ${escapeHtml(change.to)}</span>`
-          )
-          .join("")
-      : `<span class="change-pill unchanged">No pending changes</span>`;
-  }
-
   const updateButton = row.querySelector('button[data-control="update"]');
   if (updateButton instanceof HTMLButtonElement) {
     updateButton.disabled = changes.length === 0;
-    updateButton.textContent = changes.length ? "Save Changes" : "No Changes";
+    updateButton.textContent = changes.length ? "Save Changes" : hasHistory ? "Updated" : "Never Updated";
   }
 }
 
@@ -860,7 +909,10 @@ function updateModalDirtyState(ticket) {
 
   const nextValues = {
     status: String(statusSelect.value || ticket.status),
-    priority: String(prioritySelect.value || ticket.priority),
+    priority:
+      String(prioritySelect.value || ticket.priority) === BULK_UNCHANGED_VALUE
+        ? ticket.priority
+        : String(prioritySelect.value || ticket.priority),
     assignedTo: String(teamSelect.value || ticket.assignedTo),
   };
   const changes = collectTicketFieldChanges(ticket, nextValues);
@@ -876,29 +928,10 @@ function updateModalDirtyState(ticket) {
     element.classList.toggle("is-unchanged", !hasChanged);
   });
 
-  const review = document.getElementById("adminModalChangeReview");
-  if (review) {
-    review.innerHTML = changes.length
-      ? changes
-          .map(
-            (change) =>
-              `<span class="change-pill modified">${escapeHtml(change.label)}: ${escapeHtml(change.from)} -> ${escapeHtml(change.to)}</span>`
-          )
-          .join("")
-      : `<span class="change-pill unchanged">No pending changes</span>`;
-  }
-
-  const summary = document.getElementById("adminModalChangeSummary");
-  if (summary) {
-    summary.textContent = changes.length
-      ? `${changes.length} field change(s) ready to save.`
-      : "All fields match the current saved ticket values.";
-  }
-
   const updateButton = adminTicketModalContent.querySelector('button[data-modal-control="update-ticket"]');
   if (updateButton instanceof HTMLButtonElement) {
     updateButton.disabled = changes.length === 0;
-    updateButton.textContent = changes.length ? "Save Ticket Changes" : "No Changes";
+    updateButton.textContent = changes.length ? "Save Changes" : hasTicketHistory(ticket) ? "Updated" : "Never Updated";
   }
 }
 
@@ -1404,11 +1437,12 @@ function syncOverviewRowControls(ticket) {
   const teamSelect = row.querySelector('select[data-control="team"]');
   const selectCheckbox = row.querySelector('input[data-control="select-ticket"]');
   if (statusSelect instanceof HTMLSelectElement) statusSelect.value = ticket.status;
-  if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = ticket.priority;
-  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTo;
+  if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = BULK_UNCHANGED_VALUE;
+  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = "Unassigned";
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
+  resetRowControlTouched(row);
   updateManageRowDirtyState(row, ticket);
 }
 
@@ -1956,6 +1990,7 @@ async function renderTicketDetails(ticket) {
         <label>
           <span>Priority</span>
           <select id="adminModalPrioritySelect" class="table-select">
+            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}">unchanged</option>
             ${overviewPriorityOptions
               .map(
                 (priority) =>
@@ -1980,15 +2015,8 @@ async function renderTicketDetails(ticket) {
           </select>
         </label>
       </div>
-      <div class="change-review-card">
-        <p class="change-review-label">Review pending edits</p>
-        <p class="change-review-summary" id="adminModalChangeSummary">All fields match the current saved ticket values.</p>
-        <div class="change-pill-list" id="adminModalChangeReview">
-          <span class="change-pill unchanged">No pending changes</span>
-        </div>
-      </div>
       <div class="detail-actions">
-        <button class="table-btn update" type="button" data-modal-control="update-ticket" disabled>No Changes</button>
+        <button class="table-btn update" type="button" data-modal-control="update-ticket" disabled>Never Updated</button>
       </div>
     </section>
   `;
@@ -2027,11 +2055,8 @@ function bindOverviewInteractions() {
     if (!(prioritySelect instanceof HTMLSelectElement)) return;
     if (!(teamSelect instanceof HTMLSelectElement)) return;
 
-    const nextStatus = String(statusSelect.value || ticket.status);
-    const rawPriority = String(prioritySelect.value || ticket.priority);
-    const nextPriority = rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority;
-    const nextTeam = String(teamSelect.value || ticket.assignedTo);
-    applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
+    const nextValues = getManageRowDraftValues(ticket, row);
+    applyTicketChanges(ticket, nextValues.status, nextValues.priority, nextValues.assignedTo, target);
   });
 
   ticketsBody.addEventListener("change", (event) => {
@@ -2055,6 +2080,10 @@ function bindOverviewInteractions() {
     const ticketId = String(target.dataset.ticketId || "");
     const ticket = allTicketsState.find((item) => String(item.ticketId) === ticketId);
     if (row instanceof HTMLTableRowElement && ticket) {
+      const control = String(target.dataset.control || "");
+      if (control === "status") setRowControlTouched(row, "Status", true);
+      if (control === "priority") setRowControlTouched(row, "Priority", true);
+      if (control === "team") setRowControlTouched(row, "Team", true);
       updateManageRowDirtyState(row, ticket);
     }
   });
@@ -2073,7 +2102,8 @@ function bindOverviewInteractions() {
     if (!(teamSelect instanceof HTMLSelectElement)) return;
 
     const nextStatus = String(statusSelect.value || ticket.status);
-    const nextPriority = String(prioritySelect.value || ticket.priority);
+    const rawPriority = String(prioritySelect.value || ticket.priority);
+    const nextPriority = rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority;
     const nextTeam = String(teamSelect.value || ticket.assignedTo);
     await applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
@@ -2112,15 +2142,25 @@ function bindOverviewInteractions() {
     updateBulkSelectionUi();
   });
 
-  bulkDrawerStatusSelect?.addEventListener("change", updateBulkDrawerSummary);
-  bulkDrawerStatusSelect?.addEventListener("change", updateBulkApplyState);
-  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkDrawerSummary);
-  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkApplyState);
-  bulkDrawerTeamSelect?.addEventListener("change", updateBulkDrawerSummary);
-  bulkDrawerTeamSelect?.addEventListener("change", updateBulkApplyState);
+  bulkDrawerStatusSelect?.addEventListener("change", () => {
+    bulkDrawerDirtyState.status = true;
+    updateBulkDrawerSummary();
+    updateBulkApplyState();
+  });
+  bulkDrawerPrioritySelect?.addEventListener("change", () => {
+    bulkDrawerDirtyState.priority = true;
+    updateBulkDrawerSummary();
+    updateBulkApplyState();
+  });
+  bulkDrawerTeamSelect?.addEventListener("change", () => {
+    bulkDrawerDirtyState.team = true;
+    updateBulkDrawerSummary();
+    updateBulkApplyState();
+  });
 
   bulkDrawerClearSelection?.addEventListener("click", () => {
     selectedManageTicketIds.clear();
+    resetBulkDrawerDirtyState();
     renderManageTickets(allTicketsState);
     const selectAll = document.getElementById("manageSelectAll");
     if (selectAll instanceof HTMLInputElement) selectAll.checked = false;
@@ -2132,7 +2172,12 @@ function bindOverviewInteractions() {
     const nextStatus = getSelectValueOrEmpty(bulkDrawerStatusSelect);
     const nextPriority = getSelectValueOrEmpty(bulkDrawerPrioritySelect);
     const nextTeam = getSelectValueOrEmpty(bulkDrawerTeamSelect);
-    if (!nextStatus && !nextPriority && !nextTeam) {
+    const pendingUpdates = {
+      ...(bulkDrawerDirtyState.status ? { status: nextStatus || "Open" } : {}),
+      ...(bulkDrawerDirtyState.priority && nextPriority ? { priority: nextPriority } : {}),
+      ...(bulkDrawerDirtyState.team ? { assignedTo: nextTeam || "Unassigned" } : {}),
+    };
+    if (!Object.keys(pendingUpdates).length) {
       showUpdateToast({
         title: "No changes selected",
         detail: "Choose status, priority, team, or any combination.",
@@ -2150,18 +2195,14 @@ function bindOverviewInteractions() {
       bulkDrawerApplyBtn.textContent = "Applying...";
     }
     selectedTickets.forEach((ticket) => {
-      ticket.status = nextStatus || ticket.status;
-      ticket.priority = nextPriority || ticket.priority;
-      ticket.assignedTo = nextTeam || ticket.assignedTo;
+      ticket.status = Object.prototype.hasOwnProperty.call(pendingUpdates, "status") ? pendingUpdates.status : ticket.status;
+      ticket.priority = Object.prototype.hasOwnProperty.call(pendingUpdates, "priority") ? pendingUpdates.priority : ticket.priority;
+      ticket.assignedTo = Object.prototype.hasOwnProperty.call(pendingUpdates, "assignedTo") ? pendingUpdates.assignedTo : ticket.assignedTo;
       ticket.updated_at = new Date().toISOString();
       syncOverviewRowControls(ticket);
     });
     recalculateOverviewMetrics();
-    const result = await persistOverviewBulkTicketUpdate(selectedTickets, {
-      ...(nextStatus ? { status: nextStatus } : {}),
-      ...(nextPriority ? { priority: nextPriority } : {}),
-      ...(nextTeam ? { assignedTo: nextTeam } : {}),
-    });
+    const result = await persistOverviewBulkTicketUpdate(selectedTickets, pendingUpdates);
     if (bulkDrawerApplyBtn instanceof HTMLButtonElement) {
       bulkDrawerApplyBtn.disabled = false;
       bulkDrawerApplyBtn.textContent = "Apply Changes";
@@ -2175,6 +2216,7 @@ function bindOverviewInteractions() {
     renderManageTickets(allTicketsState);
     const selectAll = document.getElementById("manageSelectAll");
     if (selectAll instanceof HTMLInputElement) selectAll.checked = false;
+    resetBulkDrawerDirtyState();
     if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "Open";
     if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) bulkDrawerPrioritySelect.value = BULK_UNCHANGED_VALUE;
     if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "Unassigned";
@@ -2248,22 +2290,17 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.issue)}</td>
         <td>${escapeHtml(ticket.category)}</td>
         <td>
-          <div class="ticket-field-stack">
           <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}">__unchanged__</option>
+            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}" selected>unchanged</option>
             ${overviewPriorityOptions
               .map(
                 (priority) =>
-                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
-                    priority
-                  )}</option>`
+                  `<option value="${escapeHtml(priority)}">${escapeHtml(priority)}</option>`
               )
               .join("")}
           </select>
-          </div>
         </td>
         <td>
-          <div class="ticket-field-stack">
           <select class="table-select" data-control="status" data-ticket-id="${escapeHtml(ticket.ticketId)}">
             ${overviewStatusOptions
               .map(
@@ -2274,21 +2311,16 @@ function renderManageTickets(tickets) {
               )
               .join("")}
           </select>
-          </div>
         </td>
         <td>
-          <div class="ticket-field-stack">
           <select class="table-select" data-control="team" data-ticket-id="${escapeHtml(ticket.ticketId)}">
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(
-                    team
-                  )}</option>`
+                  `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`
               )
               .join("")}
           </select>
-          </div>
         </td>
         <td>
           <div class="table-actions">
@@ -2297,10 +2329,7 @@ function renderManageTickets(tickets) {
             )}">View</button>
             <button class="table-btn update" type="button" data-control="update" data-ticket-id="${escapeHtml(
               ticket.ticketId
-            )}" disabled>No Changes</button>
-          </div>
-          <div class="table-change-review">
-            <span class="change-pill unchanged">No pending changes</span>
+            )}" disabled>${escapeHtml(hasTicketHistory(ticket) ? "Updated" : "Never Updated")}</button>
           </div>
         </td>
       </tr>
@@ -2312,7 +2341,10 @@ function renderManageTickets(tickets) {
     const select = row.querySelector("[data-ticket-id]");
     const ticketId = String(select?.getAttribute("data-ticket-id") || "");
     const ticket = list.find((item) => String(item.ticketId) === ticketId);
-    if (ticket) updateManageRowDirtyState(row, ticket);
+    if (ticket) {
+      resetRowControlTouched(row);
+      updateManageRowDirtyState(row, ticket);
+    }
   });
   updateBulkSelectionUi();
 }
