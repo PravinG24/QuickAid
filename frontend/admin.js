@@ -181,7 +181,7 @@ const addStaffPhoneInput = document.getElementById("addStaffPhone");
 const addStaffSubmitBtn = document.getElementById("addStaffSubmitBtn");
 const sharedTicketView = window.QuickAidTicketView || {};
 const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
-const overviewPriorityOptions = ["Unchanged", "High", "Medium", "Low"];
+const overviewPriorityOptions = ["High", "Medium", "Low"];
 const overviewTeamOptions = [
   "Unassigned",
   "IT Network Services",
@@ -193,7 +193,7 @@ const overviewTeamOptions = [
   "Facilities",
 ];
 
-function buildAdminSelectOptions(options, currentValue) {
+function buildAdminSelectOptions(options, currentValue, placeholderLabel = "Unchanged") {
   const normalizedCurrent = String(currentValue || "").trim();
   return [
     `<option value="">${escapeHtml(placeholderLabel)}</option>`,
