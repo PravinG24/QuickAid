@@ -675,7 +675,7 @@ function updateBulkDrawerSummary() {
   if (nextStatus) parts.push(`status to ${nextStatus}`);
   if (nextPriority) parts.push(`priority to ${nextPriority}`);
   if (nextTeam) parts.push(`assign ${nextTeam}`);
-  bulkDrawerSummary.textContent = `Will set ${parts.join(" and ")} for ${selectedCount} ticket(s).`;
+  bulkDrawerSummary.textContent = `Will ${parts.join(" and ")} for ${selectedCount} ticket(s).`;
 }
 
 function updateBulkApplyState() {

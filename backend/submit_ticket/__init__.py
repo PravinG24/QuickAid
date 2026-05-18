@@ -267,7 +267,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     priority = str(body.get("priority", "")).strip()
     location = str(body.get("location", "")).strip() or None
     department = str(body.get("department", "")).strip() or None
-    assigned_team = str(body.get("assignedTeam") or body.get("assigned_to") or "Unassigned").strip() or "Unassigned"
 
     allowed_categories = ["IT", "HR", "Finance", "Operations", "General"]
     if category not in allowed_categories:
@@ -345,8 +344,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "priority": priority,
         "location": location,
         "department": department,
-        "assignedTeam": assigned_team,
-        "assigned_to": assigned_team,
         "status": "Open",
         "isUpdated": False,
         "hasImage": image_data is not None,

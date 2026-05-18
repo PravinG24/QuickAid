@@ -62,6 +62,7 @@ def normalize_ticket(item):
         or source.get("assigned_to")
         or source.get("assignedTo")
         or source.get("assigned_team")
+        or source.get("category")
         or "Unassigned"
     )
     ticket_id = source.get("ticketId") or source.get("ticket_id") or source.get("id") or "N/A"
