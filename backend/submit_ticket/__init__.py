@@ -51,8 +51,17 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> bool:
             html_content=html_body,
         )
 
-        SendGridAPIClient(api_key).send(message)
-        logging.info("SendGrid email sent to %s", recipient_email)
+        response = SendGridAPIClient(api_key).send(message)
+        logging.info(
+            "SendGrid response for %s: status=%s body=%s",
+            recipient_email,
+            getattr(response, "status_code", None),
+            getattr(response, "body", b"")
+        )
+        if getattr(response, "status_code", None) not in (200, 201, 202):
+            raise RuntimeError(
+                f"SendGrid returned status {getattr(response, 'status_code', None)}"
+            )
         return True
     except Exception as exc:
         logging.error("Failed to send SendGrid email to %s: %s", recipient_email, exc)
@@ -261,10 +270,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
         )
 
-    send_confirmation_email(email, ticket_id, title, requester_name)
+    submitter_email_sent = send_confirmation_email(email, ticket_id, title, requester_name)
     admin_email = _resolve_admin_notification_email()
+    admin_email_sent = False
     if admin_email and admin_email != email:
-        send_admin_notification(admin_email, ticket_id, title, requester_name, email, category, priority, description)
+        admin_email_sent = send_admin_notification(admin_email, ticket_id, title, requester_name, email, category, priority, description)
+
+    if not submitter_email_sent:
+        logging.warning("Submitter confirmation email did not send for ticket %s (%s).", ticket_id, email)
+    if admin_email and admin_email != email and not admin_email_sent:
+        logging.warning("Admin notification email did not send for ticket %s (%s).", ticket_id, admin_email)
 
     # ── Log activity ─────────────────────────────────────────────────────────
     create_activity_log(
