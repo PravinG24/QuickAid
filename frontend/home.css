@@ -1033,20 +1033,14 @@ a {
 }
 
 /* Features Section */
-.features-section {
-  padding: 5rem 2rem 2rem;
-}
 
 .section-shell {
   position: relative;
-  max-width: 1240px;
   margin: 0 auto;
   padding: clamp(2.5rem, 4vw, 4rem);
   overflow: hidden;
-  border: 1px solid var(--section-shell-border);
-  border-radius: 2rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+    linear-gradient(0deg, rgba(211, 232, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
   box-shadow: var(--section-shell-shadow);
 }
 
@@ -1076,7 +1070,7 @@ a {
 
 .section-shell-bright {
   background:
-    radial-gradient(circle at top right, rgba(219, 234, 254, 0.72), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(219, 234, 254, 0.72), transparent 30%),
     linear-gradient(180deg, #f9fbff 0%, #ffffff 100%);
 }
 
@@ -1211,9 +1205,6 @@ a {
 }
 
 /* Workflow Section */
-.workflow-section {
-  padding: 2rem 2rem 2.5rem;
-}
 
 .workflow-grid {
   position: relative;
@@ -1377,9 +1368,6 @@ a {
 }
 
 /* Benefits Section */
-.benefits-section {
-  padding: 2.5rem 2rem 5rem;
-}
 
 .benefits-grid {
   position: relative;
