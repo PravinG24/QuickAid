@@ -182,6 +182,7 @@ const sharedTicketView = window.QuickAidTicketView || {};
 const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
 const overviewPriorityOptions = ["High", "Medium", "Low"];
 const overviewTeamOptions = [
+  "Unassigned",
   "IT Network Services",
   "Digital Learning Support",
   "Accounts and Access",
@@ -190,6 +191,19 @@ const overviewTeamOptions = [
   "Academic Systems",
   "Facilities",
 ];
+
+function buildAdminSelectOptions(options, currentValue, placeholderLabel = "Unchanged") {
+  const normalizedCurrent = String(currentValue || "").trim();
+  return [
+    `<option value="">${escapeHtml(placeholderLabel)}</option>`,
+    ...options.map(
+      (option) =>
+        `<option value="${escapeHtml(option)}" ${String(option) === normalizedCurrent ? "selected" : ""}>${escapeHtml(
+          option
+        )}</option>`
+    ),
+  ].join("");
+}
 
 const nowForAdminMock = new Date();
 function isoFromOffset({ days = 0, months = 0, years = 0, hours = 10, minutes = 0 }) {
@@ -1246,6 +1260,18 @@ function syncOverviewRowControls(ticket) {
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
+  updateRowChangeState(row, ticket);
+}
+
+function updateRowChangeState(row, ticket) {
+  if (!(row instanceof HTMLTableRowElement) || !ticket) return;
+  const statusSelect = row.querySelector('select[data-control="status"]');
+  const prioritySelect = row.querySelector('select[data-control="priority"]');
+  const teamSelect = row.querySelector('select[data-control="team"]');
+  const statusChanged = statusSelect instanceof HTMLSelectElement && statusSelect.value && statusSelect.value !== ticket.status;
+  const priorityChanged = prioritySelect instanceof HTMLSelectElement && prioritySelect.value && prioritySelect.value !== ticket.priority;
+  const teamChanged = teamSelect instanceof HTMLSelectElement && teamSelect.value && teamSelect.value !== ticket.assignedTeam;
+  row.classList.toggle("row-changed", Boolean(statusChanged || priorityChanged || teamChanged));
 }
 
 
@@ -1596,7 +1622,55 @@ async function refreshOverviewForActiveRange() {
   recalculateOverviewMetrics();
 }
 
+async function persistBulkTicketUpdate(ticketIds, updates) {
+  try {
+    const accessToken = await ensureAdminAccessToken();
+    const response = await fetch(`${API_BASE}/api/bulk_update_tickets`, {
+      method: "PATCH",
+      headers: apiHeaders({ "Content-Type": "application/json" }, accessToken),
+      body: JSON.stringify({
+        ticketIds,
+        ...updates,
+      }),
+    });
+    if (!response.ok) return { success: false, updated: [] };
+    const data = await response.json().catch(() => null);
+    if (!data || !Array.isArray(data.results)) return { success: false, updated: [] };
+    
+    const updatedTickets = data.results
+      .filter((result) => result.status === "updated" && result.ticket)
+      .map((result) => normalizeAdminTicket(result.ticket));
+    
+    return { success: true, updated: updatedTickets, total: data.totalUpdated };
+  } catch {
+    return { success: false, updated: [] };
+  }
+}
+
+async function applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam) {
+  const updates = {};
+  if (nextStatus) updates.status = nextStatus;
+  if (nextTeam) updates.assignedTeam = nextTeam;
+
+  const ticketIds = selectedTickets.map((ticket) => ticket.ticketId);
+  const result = await persistBulkTicketUpdate(ticketIds, updates);
+
+  if (result.success && result.updated.length > 0) {
+    result.updated.forEach((updatedTicket) => {
+      const existingTicket = allTicketsState.find((t) => t.ticketId === updatedTicket.ticketId);
+      if (existingTicket) {
+        Object.assign(existingTicket, updatedTicket);
+      }
+    });
+    recalculateOverviewMetrics();
+    renderManageTickets(allTicketsState);
+  }
+
+  return result.success;
+}
+
 async function persistOverviewTicketUpdate(ticket) {
+  if (!API_BASE_CONFIGURED || !ticket?.ticketId) return false;
   try {
     const accessToken = await ensureAdminAccessToken();
     const response = await fetch(`${API_BASE}/api/tickets_update/${encodeURIComponent(ticket.ticketId)}`, {
@@ -1715,40 +1789,19 @@ async function renderTicketDetails(ticket) {
         <label>
           <span>Status</span>
           <select id="adminModalStatusSelect" class="table-select">
-            ${overviewStatusOptions
-              .map(
-                (status) =>
-                  `<option value="${escapeHtml(status)}" ${status === ticket.status ? "selected" : ""}>${escapeHtml(
-                    status
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewStatusOptions, ticket.status, "Unchanged")}
           </select>
         </label>
         <label>
           <span>Priority</span>
           <select id="adminModalPrioritySelect" class="table-select">
-            ${overviewPriorityOptions
-              .map(
-                (priority) =>
-                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
-                    priority
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "Unchanged")}
           </select>
         </label>
         <label>
           <span>Assigned Team</span>
           <select id="adminModalTeamSelect" class="table-select">
-            ${overviewTeamOptions
-              .map(
-                (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTeam ? "selected" : ""}>${escapeHtml(
-                    team
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam, "Unchanged")}
           </select>
         </label>
       </div>
@@ -1799,6 +1852,14 @@ function bindOverviewInteractions() {
 
   ticketsBody.addEventListener("change", (event) => {
     const target = event.target;
+    if (target instanceof HTMLSelectElement && ["status", "priority", "team"].includes(String(target.dataset.control || ""))) {
+      const ticketId = String(target.dataset.ticketId || "");
+      if (!ticketId) return;
+      const ticket = allTicketsState.find((item) => String(item.ticketId) === ticketId);
+      const row = target.closest("tr");
+      if (ticket && row instanceof HTMLTableRowElement) updateRowChangeState(row, ticket);
+      return;
+    }
     if (!(target instanceof HTMLInputElement)) return;
     if (target.dataset.control !== "select-ticket") return;
     const ticketId = String(target.dataset.ticketId || "");
@@ -1882,7 +1943,7 @@ function bindOverviewInteractions() {
         ? String(bulkDrawerTeamSelect.value || "").trim()
         : "";
     if (!nextStatus && !nextTeam) {
-      showUpdateToast({ title: "No changes selected", detail: "Choose status, team, or both.", tone: "warning" });
+      showUpdateToast({ title: "Unchangeds selected", detail: "Choose status, team, or both.", tone: "warning" });
       return;
     }
     const selectedTickets = getSelectedManageTickets();
@@ -1894,17 +1955,15 @@ function bindOverviewInteractions() {
       bulkDrawerApplyBtn.disabled = true;
       bulkDrawerApplyBtn.textContent = "Applying...";
     }
-    await Promise.all(
-      selectedTickets.map((ticket) => applyTicketChanges(ticket, nextStatus, ticket.priority, nextTeam, null, true))
-    );
+    const ok = await applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam);
     if (bulkDrawerApplyBtn instanceof HTMLButtonElement) {
       bulkDrawerApplyBtn.disabled = false;
       bulkDrawerApplyBtn.textContent = "Apply Changes";
     }
     showUpdateToast({
-      title: "Bulk update complete",
+      title: ok ? "Bulk update complete" : "Saved locally",
       detail: `${selectedTickets.length} ticket(s) updated.`,
-      tone: "success",
+      tone: ok ? "success" : "warning",
     });
     selectedManageTicketIds.clear();
     renderManageTickets(allTicketsState);
@@ -1983,38 +2042,17 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.category)}</td>
         <td>
           <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${overviewPriorityOptions
-              .map(
-                (priority) =>
-                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(
-                    priority
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "Unchanged")}
           </select>
         </td>
         <td>
           <select class="table-select" data-control="status" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${overviewStatusOptions
-              .map(
-                (status) =>
-                  `<option value="${escapeHtml(status)}" ${status === ticket.status ? "selected" : ""}>${escapeHtml(
-                    status
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewStatusOptions, ticket.status, "Unchanged")}
           </select>
         </td>
         <td>
           <select class="table-select" data-control="team" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${overviewTeamOptions
-              .map(
-                (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTeam ? "selected" : ""}>${escapeHtml(
-                    team
-                  )}</option>`
-              )
-              .join("")}
+            ${buildAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam, "Unchanged")}
           </select>
         </td>
         <td>
