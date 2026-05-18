@@ -193,7 +193,7 @@ const overviewTeamOptions = [
   "Facilities",
 ];
 
-function buildAdminSelectOptions(options, currentValue) {
+function buildAdminSelectOptions(options, currentValue, placeholderLabel = "Unchanged") {
   const normalizedCurrent = String(currentValue || "").trim();
   return [
     `<option value="">${escapeHtml(placeholderLabel)}</option>`,
@@ -1824,7 +1824,7 @@ async function renderTicketDetails(ticket) {
         <label>
           <span>Priority</span>
           <select id="adminModalPrioritySelect" class="table-select">
-            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority)}
+            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "No change")}
           </select>
         </label>
         <label>
