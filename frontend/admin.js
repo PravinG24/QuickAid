@@ -256,6 +256,10 @@ function hasTicketHistory(ticket) {
   return getTicketUpdatedTimestamp(ticket) > getTicketBaselineTimestamp(ticket);
 }
 
+function getPriorityDisplayValue(ticket) {
+  return hasTicketHistory(ticket) ? ticket?.priority || "Medium" : BULK_UNCHANGED_VALUE;
+}
+
 function getRowControlState(row, controlName) {
   if (!(row instanceof HTMLElement)) return { touched: false };
   const raw = row.dataset[`dirty${controlName}`];
@@ -1437,8 +1441,8 @@ function syncOverviewRowControls(ticket) {
   const teamSelect = row.querySelector('select[data-control="team"]');
   const selectCheckbox = row.querySelector('input[data-control="select-ticket"]');
   if (statusSelect instanceof HTMLSelectElement) statusSelect.value = ticket.status;
-  if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = BULK_UNCHANGED_VALUE;
-  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = "Unassigned";
+  if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = getPriorityDisplayValue(ticket);
+  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTo;
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
@@ -2291,11 +2295,13 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.category)}</td>
         <td>
           <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}" selected>unchanged</option>
+            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}" ${
+              getPriorityDisplayValue(ticket) === BULK_UNCHANGED_VALUE ? "selected" : ""
+            }>unchanged</option>
             ${overviewPriorityOptions
               .map(
                 (priority) =>
-                  `<option value="${escapeHtml(priority)}">${escapeHtml(priority)}</option>`
+                  `<option value="${escapeHtml(priority)}" ${priority === ticket.priority ? "selected" : ""}>${escapeHtml(priority)}</option>`
               )
               .join("")}
           </select>
@@ -2317,7 +2323,7 @@ function renderManageTickets(tickets) {
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`
+                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(team)}</option>`
               )
               .join("")}
           </select>

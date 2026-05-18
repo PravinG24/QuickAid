@@ -762,12 +762,19 @@ body {
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 0.5rem;
-  padding: 0.32rem 0.68rem;
+  width: 132px;
+  min-width: 132px;
+  height: 36px;
+  padding: 0 0.75rem;
   color: var(--text);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
   transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;
 }
 
@@ -785,6 +792,7 @@ body {
 .table-actions {
   display: flex;
   gap: 0.4rem;
+  align-items: center;
 }
 
 .table-btn.update {
