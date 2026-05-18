@@ -55,14 +55,11 @@ function convertActivityLogsToTimelineItems(logs) {
         if (updatedFields.priority) {
           fieldLabels.push(`priority to ${updatedFields.priority}`);
         }
-        if (updatedFields.assignedTeam) {
-          fieldLabels.push(`assigned team to ${updatedFields.assignedTeam}`);
-        }
         if (updatedFields.category) {
           fieldLabels.push(`category to ${updatedFields.category}`);
         }
-        if (updatedFields.adminNotes) {
-          fieldLabels.push(`admin note updated`);
+        if (updatedFields.assignedTo) {
+          fieldLabels.push(`assigned to ${updatedFields.assignedTo}`);
         }
       }
 
@@ -153,7 +150,7 @@ function normalizeDetailTicket(source) {
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
   const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || new Date().toISOString();
   const updatedAt = item.updated_at || item.updatedAt || item.created_at || item.createdAt || item.submitted_at || new Date().toISOString();
-  const assignedTeam = item.assignedTeam || item.assigned_to || item.assignedTo || item.assigned_team || "";
+  const assignedTo = item.assignedTo || item.assignedTeam || item.assigned_to || item.assigned_team || "";
   return {
     ...item,
     ticket_id: ticketId,
@@ -161,9 +158,7 @@ function normalizeDetailTicket(source) {
     subject: item.subject || item.title || "No subject",
     title: item.title || item.subject || "No subject",
     status: normalizeDetailStatus(item.status),
-    assignedTeam,
-    assigned_to: assignedTeam || item.assigned_to || "",
-    assignedTo: assignedTeam || item.assignedTo || "",
+    assignedTo,
     created_at: createdAt,
     submitted_at: item.submitted_at || createdAt,
     updated_at: updatedAt,
@@ -321,7 +316,7 @@ function renderTicket(ticket) {
   description.innerHTML = renderDescriptionFormatting(ticket.description);
   submittedBy.textContent = ticket.name || "Requester";
   department.textContent = ticket.department || ticket.category || "General Inquiry";
-  assignedTo.textContent = ticket.assignedTeam || ticket.assignedTo || ticket.assigned_to || "Unassigned";
+  assignedTo.textContent = ticket.assignedTo || "Unassigned";
   createdAt.textContent = formatDateTime(ticket.created_at || ticket.submitted_at);
   updatedAt.textContent = formatDateTime(ticket.updated_at || ticket.submitted_at);
 

@@ -2,7 +2,6 @@ import azure.functions as func
 import logging
 import json
 import os
-import uuid
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 
@@ -42,8 +41,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Validate allowed fields ──────────────────────────────────────────────
-    allowed_updates = ["status", "priority", "assignedTeam", "adminNotes", "category"]
+    if "assignedTeam" in body and "assignedTo" not in body:
+        body["assignedTo"] = body["assignedTeam"]
+
+    allowed_updates = ["status", "priority", "assignedTo", "adminNotes", "category"]
     updates = {k: v for k, v in body.items() if k in allowed_updates}
+    tracked_update_fields = {"status", "priority", "assignedTo", "category"}
 
     if not updates:
         return func.HttpResponse(
@@ -109,6 +112,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ticket = results[0]
         old_values = {}  # Store old values for activity log
         changed_fields = {}
+        tracked_old_values = {}
+        tracked_changed_fields = {}
         changes = []
 
         # Set default priority to Low if not already set
@@ -121,6 +126,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 old_values[key] = ticket[key]
             if ticket.get(key) != value:
                 changed_fields[key] = value
+                if key in tracked_update_fields:
+                    tracked_changed_fields[key] = value
+                    tracked_old_values[key] = ticket.get(key)
 
         # Apply updates
         for key, value in updates.items():
@@ -132,10 +140,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "new_value": value,
                 })
             ticket[key] = value
-            if key == "assignedTeam":
-                ticket["assigned_to"] = value
+            if key == "assignedTo":
                 ticket["assignedTo"] = value
-                ticket["assigned_team"] = value
+                ticket.pop("assignedTeam", None)
+                ticket.pop("assigned_to", None)
+                ticket.pop("assigned_team", None)
 
         # ── Update timestamp ────────────────────────────────────────────────
         now = datetime.now(timezone.utc)
@@ -154,31 +163,29 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         container.replace_item(item=ticket["id"], body=ticket)
 
         # ── Log activity with proper admin identification ────────────────────
-        if changed_fields:
+        if tracked_changed_fields:
             create_activity_log(
                 actor_email=admin_email,
                 actor_type="admin",
                 action="updated_ticket",
                 ticket_id=ticket_id,
-                updated_fields=changed_fields,
-                old_values=old_values
+                updated_fields=tracked_changed_fields,
+                old_values=tracked_old_values
             )
 
         # ── Create notification for ticket creator ──────────────────────────
-        if changed_fields:
+        if tracked_changed_fields:
             ticket_creator_email = str(ticket.get("email") or "").strip()
             if ticket_creator_email:
                 updated_field_names = []
-                if "status" in changed_fields:
-                    updated_field_names.append(f"status to {changed_fields['status']}")
-                if "priority" in changed_fields:
-                    updated_field_names.append(f"priority to {changed_fields['priority']}")
-                if "assignedTeam" in changed_fields:
-                    updated_field_names.append(f"assigned team to {changed_fields['assignedTeam']}")
-                if "category" in changed_fields:
-                    updated_field_names.append(f"category to {changed_fields['category']}")
-                if "adminNotes" in changed_fields:
-                    updated_field_names.append("admin notes updated")
+                if "status" in tracked_changed_fields:
+                    updated_field_names.append(f"status to {tracked_changed_fields['status']}")
+                if "priority" in tracked_changed_fields:
+                    updated_field_names.append(f"priority to {tracked_changed_fields['priority']}")
+                if "assignedTo" in tracked_changed_fields:
+                    updated_field_names.append(f"assigned to {tracked_changed_fields['assignedTo']}")
+                if "category" in tracked_changed_fields:
+                    updated_field_names.append(f"category to {tracked_changed_fields['category']}")
 
                 if updated_field_names:
                     fields_str = ", ".join(updated_field_names)
@@ -190,7 +197,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     email=ticket_creator_email,
                     ticket_id=ticket_id,
                     message=notification_message,
-                    updated_fields=changed_fields
+                    updated_fields=tracked_changed_fields
                 )
 
     except exceptions.CosmosHttpResponseError as e:

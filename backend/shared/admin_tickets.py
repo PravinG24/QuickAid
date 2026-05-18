@@ -57,12 +57,11 @@ def normalize_ticket(item):
         or source.get("name")
         or (email.split("@")[0] if email else "N/A")
     )
-    assigned_team = (
-        source.get("assignedTeam")
+    assigned_to = (
+        source.get("assignedTo")
+        or source.get("assignedTeam")
         or source.get("assigned_to")
-        or source.get("assignedTo")
         or source.get("assigned_team")
-        or source.get("category")
         or "Unassigned"
     )
     ticket_id = source.get("ticketId") or source.get("ticket_id") or source.get("id") or "N/A"
@@ -79,8 +78,7 @@ def normalize_ticket(item):
         "category": source.get("category") or "General",
         "priority": normalize_priority(source.get("priority")),
         "status": normalize_status(source.get("status")),
-        "assignedTeam": assigned_team,
-        "assigned_to": assigned_team,
+        "assignedTo": assigned_to,
         "created_at": created_at,
         "submitted_at": source.get("submitted_at") or created_at,
         "updated_at": updated_at,

@@ -153,7 +153,7 @@ function quickAidRenderTicketDetailLayout(ticket, options = {}) {
         <div class="info-row">
           <span class="info-key">Assigned to</span>
           <span class="info-val">${quickAidEscapeHtml(
-            safeTicket.assignedTeam || safeTicket.assignedTo || safeTicket.assigned_to || "Unassigned"
+            safeTicket.assignedTo || "Unassigned"
           )}</span>
         </div>
         <div class="info-row">

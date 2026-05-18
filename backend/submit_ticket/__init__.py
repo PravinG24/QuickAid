@@ -12,7 +12,6 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 from shared.secrets import get_secret
-from shared.activity_log import create_activity_log
 
 
 def _resolve_sendgrid_api_key() -> str:
@@ -343,6 +342,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "location": location,
         "department": department,
         "status": "Open",
+        "assignedTo": "Unassigned",
         "hasImage": image_data is not None,
         "createdAt": now.isoformat(),
         "updatedAt": now.isoformat(),
@@ -401,24 +401,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Log activity ─────────────────────────────────────────────────────────
-    create_activity_log(
-        actor_email=email,
-        actor_type="user",
-        action="submitted_ticket",
-        ticket_id=ticket_id,
-        updated_fields={
-            "title": title,
-            "category": category,
-            "priority": priority
-        }
-    )
-
     return func.HttpResponse(
         json.dumps({
             "message": "Ticket submitted successfully.",
             "ticketId": ticket_id,
             "type": "ticket",
             "status": "Open",
+            "assignedTo": "Unassigned",
             "priority": priority,
             "hasImage": image_data is not None,
             "createdAt": now.isoformat(),

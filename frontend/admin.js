@@ -244,7 +244,7 @@ const mockAdminData = {
         category: "Network Access",
         priority: "High",
         status: "In Progress",
-        assignedTeam: "IT Network Services",
+        assignedTo: "IT Network Services",
         created_at: isoFromOffset({ days: 0, hours: 9, minutes: 30 }),
         submitted_at: isoFromOffset({ days: 0, hours: 9, minutes: 30 }),
         updated_at: isoFromOffset({ days: 0, hours: 12, minutes: 15 }),
@@ -256,7 +256,7 @@ const mockAdminData = {
         category: "Learning Systems",
         priority: "Medium",
         status: "Open",
-        assignedTeam: "Digital Learning Support",
+        assignedTo: "Digital Learning Support",
         created_at: isoFromOffset({ days: 0, hours: 8, minutes: 45 }),
         submitted_at: isoFromOffset({ days: 0, hours: 8, minutes: 45 }),
         updated_at: isoFromOffset({ days: 0, hours: 10, minutes: 5 }),
@@ -268,7 +268,7 @@ const mockAdminData = {
         category: "Account Access",
         priority: "High",
         status: "Resolved",
-        assignedTeam: "Accounts and Access",
+        assignedTo: "Accounts and Access",
         created_at: isoFromOffset({ days: 2, hours: 11, minutes: 0 }),
         submitted_at: isoFromOffset({ days: 2, hours: 11, minutes: 0 }),
         updated_at: isoFromOffset({ days: 1, hours: 14, minutes: 25 }),
@@ -280,7 +280,7 @@ const mockAdminData = {
         category: "Device Support",
         priority: "Low",
         status: "Open",
-        assignedTeam: "Device Support",
+        assignedTo: "Device Support",
         created_at: isoFromOffset({ days: 5, hours: 9, minutes: 40 }),
         submitted_at: isoFromOffset({ days: 5, hours: 9, minutes: 40 }),
         updated_at: isoFromOffset({ days: 4, hours: 16, minutes: 10 }),
@@ -292,7 +292,7 @@ const mockAdminData = {
         category: "Email and Collaboration",
         priority: "Medium",
         status: "In Progress",
-        assignedTeam: "Accounts and Access",
+        assignedTo: "Accounts and Access",
         created_at: isoFromOffset({ days: 12, hours: 10, minutes: 20 }),
         submitted_at: isoFromOffset({ days: 12, hours: 10, minutes: 20 }),
         updated_at: isoFromOffset({ days: 10, hours: 13, minutes: 0 }),
@@ -304,7 +304,7 @@ const mockAdminData = {
         category: "Academic Systems",
         priority: "High",
         status: "Open",
-        assignedTeam: "Academic Systems",
+        assignedTo: "Academic Systems",
         created_at: isoFromOffset({ days: 20, hours: 15, minutes: 5 }),
         submitted_at: isoFromOffset({ days: 20, hours: 15, minutes: 5 }),
         updated_at: isoFromOffset({ days: 19, hours: 9, minutes: 30 }),
@@ -316,7 +316,7 @@ const mockAdminData = {
         category: "Campus Facilities",
         priority: "Low",
         status: "Resolved",
-        assignedTeam: "Campus Facilities",
+        assignedTo: "Campus Facilities",
         created_at: isoFromOffset({ months: 2, days: 3, hours: 10, minutes: 0 }),
         submitted_at: isoFromOffset({ months: 2, days: 3, hours: 10, minutes: 0 }),
         updated_at: isoFromOffset({ months: 2, days: 1, hours: 11, minutes: 10 }),
@@ -328,7 +328,7 @@ const mockAdminData = {
         category: "Account Access",
         priority: "Medium",
         status: "Resolved",
-        assignedTeam: "Accounts and Access",
+        assignedTo: "Accounts and Access",
         created_at: isoFromOffset({ years: 1, months: 1, days: 2, hours: 9, minutes: 0 }),
         submitted_at: isoFromOffset({ years: 1, months: 1, days: 2, hours: 9, minutes: 0 }),
         updated_at: isoFromOffset({ years: 1, months: 1, days: 1, hours: 12, minutes: 0 }),
@@ -340,7 +340,7 @@ const mockAdminData = {
         category: "Network Access",
         priority: "Medium",
         status: "In Progress",
-        assignedTeam: "IT Network Services",
+        assignedTo: "IT Network Services",
         created_at: isoFromOffset({ days: 6, hours: 14, minutes: 10 }),
         submitted_at: isoFromOffset({ days: 6, hours: 14, minutes: 10 }),
         updated_at: isoFromOffset({ days: 5, hours: 11, minutes: 55 }),
@@ -352,7 +352,7 @@ const mockAdminData = {
         category: "Account Access",
         priority: "High",
         status: "Open",
-        assignedTeam: "Accounts and Access",
+        assignedTo: "Accounts and Access",
         created_at: isoFromOffset({ days: 3, hours: 10, minutes: 40 }),
         submitted_at: isoFromOffset({ days: 3, hours: 10, minutes: 40 }),
         updated_at: isoFromOffset({ days: 2, hours: 9, minutes: 5 }),
@@ -364,7 +364,7 @@ const mockAdminData = {
         category: "Facilities",
         priority: "Low",
         status: "Resolved",
-        assignedTeam: "Campus Facilities",
+        assignedTo: "Campus Facilities",
         created_at: isoFromOffset({ months: 1, days: 1, hours: 9, minutes: 15 }),
         submitted_at: isoFromOffset({ months: 1, days: 1, hours: 9, minutes: 15 }),
         updated_at: isoFromOffset({ months: 1, hours: 12, minutes: 0 }),
@@ -1168,7 +1168,7 @@ function computeOverviewDataFromTickets(tickets) {
         const resolveMinutes = Math.max(0, (updatedDate.getTime() - createdDate.getTime()) / 60000);
         resolutionMinutesTotal += resolveMinutes;
         resolvedCount += 1;
-        const departmentLabel = String(ticket.assignedTeam || ticket.assigned_team || "Unassigned");
+        const departmentLabel = String(ticket.assignedTo || "Unassigned");
         const current = departmentPerformanceMap.get(departmentLabel) || { label: departmentLabel, volume: 0, minutesTotal: 0 };
         current.volume += 1;
         current.minutesTotal += resolveMinutes;
@@ -1258,7 +1258,7 @@ function syncOverviewRowControls(ticket) {
   const selectCheckbox = row.querySelector('input[data-control="select-ticket"]');
   if (statusSelect instanceof HTMLSelectElement) statusSelect.value = ticket.status;
   if (prioritySelect instanceof HTMLSelectElement) prioritySelect.value = ticket.priority;
-  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTeam;
+  if (teamSelect instanceof HTMLSelectElement) teamSelect.value = ticket.assignedTo;
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
@@ -1621,7 +1621,7 @@ async function persistOverviewTicketUpdate(ticket) {
       body: JSON.stringify({
         status: ticket.status,
         priority: ticket.priority,
-        assignedTeam: ticket.assignedTeam,
+        assignedTo: ticket.assignedTo,
       }),
     });
     if (!response.ok) return false;
@@ -1702,14 +1702,11 @@ function convertActivityLogsToTimelineItems(logs) {
         if (updatedFields.priority) {
           fieldLabels.push(`priority to ${updatedFields.priority}`);
         }
-        if (updatedFields.assignedTeam) {
-          fieldLabels.push(`assigned team to ${updatedFields.assignedTeam}`);
-        }
         if (updatedFields.category) {
           fieldLabels.push(`category to ${updatedFields.category}`);
         }
-        if (updatedFields.adminNotes) {
-          fieldLabels.push("admin notes updated");
+        if (updatedFields.assignedTo) {
+          fieldLabels.push(`assigned to ${updatedFields.assignedTo}`);
         }
       }
 
@@ -1781,7 +1778,7 @@ async function renderTicketDetails(ticket) {
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTeam ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(
                     team
                   )}</option>`
               )
@@ -1830,7 +1827,7 @@ function bindOverviewInteractions() {
 
     const nextStatus = String(statusSelect.value || ticket.status);
     const nextPriority = String(prioritySelect.value || ticket.priority);
-    const nextTeam = String(teamSelect.value || ticket.assignedTeam);
+    const nextTeam = String(teamSelect.value || ticket.assignedTo);
     applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
 
@@ -1865,7 +1862,7 @@ function bindOverviewInteractions() {
 
     const nextStatus = String(statusSelect.value || ticket.status);
     const nextPriority = String(prioritySelect.value || ticket.priority);
-    const nextTeam = String(teamSelect.value || ticket.assignedTeam);
+    const nextTeam = String(teamSelect.value || ticket.assignedTo);
     await applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
 
@@ -1986,7 +1983,7 @@ function normalizeAdminTicket(ticket) {
     category: source.category || source.department || "General",
     priority: source.priority || "Medium",
     status: normalizedStatus || "Open",
-    assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || source.assigned_team || "Unassigned",
+    assignedTo: source.assignedTo || source.assignedTeam || source.assigned_to || source.assigned_team || "Unassigned",
     hasImage: Boolean(source.hasImage || source.image),
     image: source.image || null,
     comments: Array.isArray(source.comments) ? source.comments : [],
@@ -2047,7 +2044,7 @@ function renderManageTickets(tickets) {
             ${overviewTeamOptions
               .map(
                 (team) =>
-                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTeam ? "selected" : ""}>${escapeHtml(
+                  `<option value="${escapeHtml(team)}" ${team === ticket.assignedTo ? "selected" : ""}>${escapeHtml(
                     team
                   )}</option>`
               )
@@ -2268,10 +2265,10 @@ function renderSupportTeams(data) {
 async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, triggerButton = null, suppressToast = false) {
   const prevStatus = ticket.status;
   const prevPriority = ticket.priority;
-  const prevTeam = ticket.assignedTeam;
+  const prevTeam = ticket.assignedTo;
   ticket.status = nextStatus || ticket.status;
   ticket.priority = nextPriority || ticket.priority;
-  ticket.assignedTeam = nextTeam || ticket.assignedTeam;
+  ticket.assignedTo = nextTeam || ticket.assignedTo;
   ticket.updated_at = new Date().toISOString();
   recalculateOverviewMetrics();
   syncOverviewRowControls(ticket);
@@ -2284,7 +2281,7 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
   const changes = [];
   if (prevStatus !== ticket.status) changes.push(`Status: ${prevStatus} -> ${ticket.status}`);
   if (prevPriority !== ticket.priority) changes.push(`Priority: ${prevPriority} -> ${ticket.priority}`);
-  if (prevTeam !== ticket.assignedTeam) changes.push(`Team: ${prevTeam} -> ${ticket.assignedTeam}`);
+  if (prevTeam !== ticket.assignedTo) changes.push(`Assigned to: ${prevTeam} -> ${ticket.assignedTo}`);
   const detail = changes.length ? `${ticket.ticketId} | ${changes.join(" | ")}` : `${ticket.ticketId} | No field changes`;
   if (!suppressToast) {
     showUpdateToast({
