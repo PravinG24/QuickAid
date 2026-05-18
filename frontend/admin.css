@@ -482,7 +482,6 @@ body {
   border: 1px solid #d2e3fb;
   border-radius: 0.75rem;
   margin: 0 0.4rem;
-  cursor: pointer;
 }
 
 .notif-item-read {
@@ -1184,10 +1183,6 @@ tbody tr:hover {
 }
 
 tbody tr.row-changed {
-  background: #f3f4f7;
-}
-
-tbody tr.row-updated {
   background: #f3f4f7;
 }
 

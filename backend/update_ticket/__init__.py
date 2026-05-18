@@ -110,9 +110,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         old_values = {}  # Store old values for activity log
         changed_fields = {}
 
-        # New tickets can remain unprioritized until admin triage.
+        # Set default priority to Low if not already set
         if "priority" not in ticket:
-            ticket["priority"] = ""
+            ticket["priority"] = "Low"
 
         # Capture old values and determine which fields actually changed
         for key, value in updates.items():
@@ -136,7 +136,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         now = datetime.now(timezone.utc)
         ticket["updatedAt"] = now.isoformat()
         ticket["updated_at"] = ticket["updatedAt"]
-        ticket["isUpdated"] = True
 
         # ── Extract admin email from Entra token ─────────────────────────────
         admin_email = str(

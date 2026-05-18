@@ -114,7 +114,7 @@ function quickAidRenderTicketDetailLayout(ticket, options = {}) {
       <div class="ticket-page-badges">
         <span class="badge ${quickAidBadgeClass(safeTicket.status)}">${quickAidEscapeHtml(safeTicket.status || "Open")}</span>
         <span class="detail-priority-pill ${quickAidPriorityClass(safeTicket.priority)}">${quickAidEscapeHtml(
-    safeTicket.priority || "No priority"
+    safeTicket.priority || "Medium"
   )}</span>
       </div>
     </header>

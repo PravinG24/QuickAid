@@ -272,20 +272,18 @@
             <label class="field hidden">
               <span>Assigned team <strong>*</strong></span>
               <select id="department" name="department" autocomplete="off" required>
-                <option value="Unassigned">Unassigned</option>
-                <option value="IT Network Services">IT Network Services</option>
-                <option value="Digital Learning Support">Digital Learning Support</option>
-                <option value="Accounts and Access">Accounts and Access</option>
-                <option value="Device Support">Device Support</option>
-                <option value="Campus Facilities">Campus Facilities</option>
-                <option value="Academic Systems">Academic Systems</option>
-                <option value="Facilities">Facilities</option>
+                <option value="">Select assigned team</option>
+                <option value="IT">IT</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+                <option value="HR">HR</option>
+                <option value="General">General</option>
               </select>
               <small class="error" id="departmentError"></small>
             </label>
 
             <!-- Backend note: ticket priority is assigned by admin triage after creation. -->
-            <input id="priority" name="priority" type="hidden" value="" />
+            <input id="priority" name="priority" type="hidden" value="Medium" />
 
             <label class="field field-wide">
               <span>Subject <strong>*</strong></span>

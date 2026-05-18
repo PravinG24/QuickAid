@@ -42,7 +42,7 @@ def normalize_status(value):
 
 def normalize_priority(value):
     normalized = str(value or "").strip()
-    return PRIORITY_ALIASES.get(normalized.lower().replace("_", " "), normalized)
+    return PRIORITY_ALIASES.get(normalized.lower().replace("_", " "), normalized or "Medium")
 
 
 def normalize_ticket(item):
@@ -81,7 +81,6 @@ def normalize_ticket(item):
         "status": normalize_status(source.get("status")),
         "assignedTeam": assigned_team,
         "assigned_to": assigned_team,
-        "isUpdated": bool(source.get("isUpdated")),
         "created_at": created_at,
         "submitted_at": source.get("submitted_at") or created_at,
         "updated_at": updated_at,
@@ -120,6 +119,5 @@ def update_ticket_fields(container, ticket_id, fields):
     item.update(fields)
     item["updatedAt"] = now
     item["updated_at"] = now
-    item["isUpdated"] = True
     saved = container.upsert_item(body=item)
     return normalize_ticket(saved)
