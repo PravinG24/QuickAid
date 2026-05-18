@@ -300,9 +300,13 @@ function ticketMatchesCategoryFilter(ticket, filterValue) {
 function toBackendTicketPayload(payload) {
   const backendPayload = {
     email: payload.email,
+    name: payload.name,
     title: payload.subject,
     description: payload.description,
     category: toBackendCategory(payload.category || payload.department || payload.request_type),
+    priority: payload.priority || "Medium",
+    location: payload.location || null,
+    department: payload.department || null,
   };
   if (payload.image) backendPayload.image = payload.image;
   return backendPayload;
@@ -492,10 +496,18 @@ function normalizeTicketRecord(source) {
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
   const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || currentIsoTime();
   const updatedAt = item.updated_at || item.updatedAt || item.submitted_at || item.created_at || item.createdAt || currentIsoTime();
+  const normalizedName =
+    item.name ||
+    item.requesterName ||
+    item.requester ||
+    item.user ||
+    (item.email ? String(item.email).split("@")[0] : "") ||
+    "Requester";
   return {
     ...item,
     ticket_id: ticketId,
     ticketId,
+    name: normalizedName,
     subject: item.subject || item.title || "No subject",
     title: item.title || item.subject || "No subject",
     status: normalizeTicketStatus(item.status),
@@ -845,49 +857,32 @@ function updateHeaderAuthUi() {
 }
 
 // -----------------------------
-// Notifications dropdown wiring
-// -----------------------------
-function closeNotifDropdown() {
-  // Backend-first mode: notification UI is disabled until backend has notification routes.
-}
+// ─── Notifications dropdown wiring ───
+// Fetch notifications from backend when user signs in
 
-/* Extra frontend-only function disabled: notifications have no backend route yet.
-const notifStorageKey = "quickaid-notifs-read-v1";
-const defaultNotifications = [
-  {
-    id: "n1",
-    unread: true,
-    title: "Your ticket #TKT-001 has been assigned to IT Support",
-    time: "2 hours ago",
-  },
-  {
-    id: "n2",
-    unread: true,
-    title: "New comment added to ticket #TKT-002",
-    time: "1 day ago",
-  },
-  {
-    id: "n3",
-    unread: false,
-    title: "Ticket #TKT-003 has been resolved",
-    time: "3 days ago",
-  },
-];
-
-function loadNotifReadSet() {
-  const raw = localStorage.getItem(notifStorageKey);
-  if (!raw) return new Set(["n3"]);
+async function fetchNotifications(email) {
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set(["n3"]);
-    return new Set(parsed.map(String));
-  } catch {
-    return new Set(["n3"]);
-  }
-}
+    const response = await fetch(
+      `${API_BASE}/api/notifications?email=${encodeURIComponent(email)}&unread_only=false`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
 
-function saveNotifReadSet(readSet) {
-  localStorage.setItem(notifStorageKey, JSON.stringify(Array.from(readSet)));
+    if (!response.ok) {
+      logging.warning("Failed to fetch notifications: %s", response.status);
+      return { notifications: [], unread_count: 0 };
+    }
+
+    return response.json();
+  } catch (error) {
+    logging.error("Error fetching notifications: %s", error.message);
+    return { notifications: [], unread_count: 0 };
+  }
 }
 
 function openNotifDropdown() {
@@ -902,27 +897,33 @@ function closeNotifDropdown() {
   btnNotifications?.setAttribute("aria-expanded", "false");
 }
 
-function renderNotifDropdown() {
+async function renderNotifDropdown(email) {
   if (!notifList || !notifUnreadCount) return;
 
-  const readSet = loadNotifReadSet();
-  const notifications = defaultNotifications.map((n) => ({
-    ...n,
-    isRead: readSet.has(n.id) || !n.unread,
-  }));
+  const data = await fetchNotifications(email);
+  const notifications = data.notifications || [];
+  const unreadCount = data.unread_count || 0;
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
   notifUnreadCount.textContent = String(unreadCount);
   notifBadge?.classList.toggle("hidden", unreadCount === 0);
   if (notifBadge) notifBadge.textContent = String(unreadCount);
 
   notifList.innerHTML = "";
+  if (!notifications.length) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "notif-item";
+    emptyItem.textContent = "No notifications";
+    notifList.appendChild(emptyItem);
+    return;
+  }
+
   notifications.forEach((n) => {
     const li = document.createElement("li");
-    li.className = `notif-item ${n.isRead ? "notif-item-read" : "notif-item-unread"}`;
+    li.className = `notif-item ${n.read ? "notif-item-read" : "notif-item-unread"}`;
+    li.dataset.notifId = n.id;
 
     const left = document.createElement("span");
-    if (n.isRead) {
+    if (n.read) {
       left.className = "notif-check";
       left.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -938,16 +939,17 @@ function renderNotifDropdown() {
 
     const title = document.createElement("div");
     title.className = "notif-text-title";
-    title.textContent = n.title;
+    title.textContent = n.message || "Ticket update";
 
     const time = document.createElement("div");
     time.className = "notif-time";
+    const formattedTime = formatDateTime(n.timestamp);
     time.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 7V12L15 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2.2"/>
       </svg>
-      <span>${n.time}</span>
+      <span>${formattedTime}</span>
     `;
 
     textWrap.appendChild(title);
@@ -955,38 +957,83 @@ function renderNotifDropdown() {
 
     li.appendChild(left);
     li.appendChild(textWrap);
+
+    // Add click handler to mark as read
+    if (!n.read) {
+      li.addEventListener("click", async () => {
+        await markNotificationAsRead(n.id, email);
+      });
+    }
+
     notifList.appendChild(li);
   });
 }
 
-function markAllNotifAsRead() {
-  const allIds = defaultNotifications.map((n) => n.id);
-  saveNotifReadSet(new Set(allIds));
-  renderNotifDropdown();
+async function markNotificationAsRead(notificationId, email) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/notifications/${notificationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
+
+    if (response.ok) {
+      await renderNotifDropdown(email);
+    }
+  } catch (error) {
+    logging.error("Error marking notification as read: %s", error.message);
+  }
+}
+
+async function markAllNotifAsRead(email) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/notifications/all?email=${encodeURIComponent(email)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Correlation-Id": crypto.randomUUID(),
+        },
+      }
+    );
+
+    if (response.ok) {
+      await renderNotifDropdown(email);
+    }
+  } catch (error) {
+    logging.error("Error marking all notifications as read: %s", error.message);
+  }
 }
 
 function wireNotificationsUi() {
   if (!btnNotifications || !notifDropdown) return;
 
-  // Initial render (unread count + list)
-  renderNotifDropdown();
+  const session = loadSession();
+  const email = session?.email;
+  if (!email) return;
 
-  btnNotifications.addEventListener("click", () => {
+  btnNotifications.addEventListener("click", async () => {
     const isOpen = notifDropdown && !notifDropdown.classList.contains("hidden");
     if (isOpen) {
       closeNotifDropdown();
     } else {
-      renderNotifDropdown(); // refresh counts in case of state changes
+      await renderNotifDropdown(email);
       openNotifDropdown();
     }
   });
 
-  btnMarkAllRead?.addEventListener("click", () => {
-    markAllNotifAsRead();
+  btnMarkAllRead?.addEventListener("click", async () => {
+    await markAllNotifAsRead(email);
     closeNotifDropdown();
   });
 
-  // Click outside to close.
+  // Click outside to close
   document.addEventListener("click", (e) => {
     if (!notifDropdown || notifDropdown.classList.contains("hidden")) return;
     const target = e.target;
@@ -995,10 +1042,12 @@ function wireNotificationsUi() {
     if (notifDropdown.contains(target)) return;
     closeNotifDropdown();
   });
+
+  // Load notifications when signed in
+  renderNotifDropdown(email);
 }
 
 wireNotificationsUi();
-*/
 
 /* Extra frontend-only function disabled: profile preferences have no backend route yet.
 function openProfileModal() {
@@ -1414,10 +1463,20 @@ form.addEventListener("submit", async (event) => {
   clearFormErrors();
   hideSubmitResult();
 
+  const session = loadSession();
+  const sessionEmail = sanitize(session?.email).toLowerCase();
+  if (!sessionEmail || !emailRegex.test(sessionEmail)) {
+    showSubmitResult("error", "Your session is invalid. Please sign in again.");
+    window.location.href = "./login.html";
+    return;
+  }
+
+  if (form.email) form.email.value = sessionEmail;
+
   const payload = {
     request_type: sanitize(form.category.value),
     name: sanitize(form.name.value),
-    email: sanitize(form.email.value),
+    email: sessionEmail,
     category: sanitize(form.category.value),
     department: sanitize(form.category.value),
     assigned_to: sanitize(form.category.value),
@@ -1494,10 +1553,24 @@ trackForm.addEventListener("submit", async (event) => {
   trackBtn.disabled = true;
   trackBtn.textContent = "Searching...";
   try {
-    const data = await getTicketsByEmail(email);
-    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+    // Store current user email for notifications
+    currentUserEmail = email;
+
+    // Fetch tickets first so a notification failure does not blank the dashboard.
+    const ticketsData = await getTicketsByEmail(email);
+    lastLoadedTickets = Array.isArray(ticketsData.tickets) ? ticketsData.tickets.map(normalizeTicketRecord) : [];
     persistTicketCache(lastLoadedTickets);
     applyStatusFilter();
+
+    // Notifications are best-effort; keep ticket data visible even if they fail.
+    try {
+      const notificationsData = await getNotificationsByEmail(email);
+      currentUserNotifications = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : [];
+    } catch {
+      currentUserNotifications = [];
+    }
+
+    renderNotifDropdown();
   } catch (error) {
     lastLoadedTickets = [];
     ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
@@ -1819,10 +1892,25 @@ if (!bootSession?.email) {
 if (bootSession?.email) {
   (async () => {
     try {
-      const data = await getTicketsByEmail(bootSession.email);
-      lastLoadedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+      const ticketsData = await getTicketsByEmail(bootSession.email);
+      lastLoadedTickets = Array.isArray(ticketsData?.tickets)
+        ? ticketsData.tickets.map(normalizeTicketRecord)
+        : [];
       persistTicketCache(lastLoadedTickets);
       applyStatusFilter();
+
+      currentUserEmail = bootSession.email;
+
+      try {
+        const notificationsData = await getNotificationsByEmail(bootSession.email);
+        currentUserNotifications = Array.isArray(notificationsData?.notifications)
+          ? notificationsData.notifications
+          : [];
+      } catch {
+        currentUserNotifications = [];
+      }
+
+      renderNotifDropdown();
     } catch {
       lastLoadedTickets = [];
       applyStatusFilter();

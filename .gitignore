@@ -5,6 +5,7 @@ local.settings.json
 DESIGN.md
 PRODUCT.md
 
+
 # Python virtual environment
 .venv/
 .venv39/

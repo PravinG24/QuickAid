@@ -9,6 +9,80 @@ const sharedTicketView = window.QuickAidTicketView || {};
 const escapeHtml = sharedTicketView.escapeHtml || ((value) => String(value || ""));
 const formatDateTime = sharedTicketView.formatDateTime || ((value) => String(value || "-"));
 
+async function fetchTicketActivityLogs(ticketId) {
+  if (!ticketId) return [];
+  const headers = {};
+  const functionKey = String(window.QUICKAID_FUNCTION_KEY || "").trim();
+  if (functionKey) {
+    headers["x-functions-key"] = functionKey;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/activity_log/${encodeURIComponent(ticketId)}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const body = await response.json();
+    return Array.isArray(body.logs) ? body.logs : [];
+  } catch {
+    return [];
+  }
+}
+
+function convertActivityLogsToTimelineItems(logs) {
+  if (!Array.isArray(logs) || !logs.length) return [];
+
+  return logs
+    .map((entry) => {
+      const timestamp = entry.timestamp || entry.at || new Date().toISOString();
+      const actor = String(entry.actor || "System");
+      const actor_type = String(entry.actor_type || "").toLowerCase();
+      const by = actor_type === "admin" ? `Admin (${actor})` : actor_type === "user" ? `User (${actor})` : actor;
+
+      let label = "Updated ticket";
+      const updatedFields = entry.updated_fields || {};
+      const fieldLabels = [];
+
+      if (typeof updatedFields === "object" && Object.keys(updatedFields).length) {
+        if (updatedFields.status) {
+          fieldLabels.push(`status to ${updatedFields.status}`);
+        }
+        if (updatedFields.priority) {
+          fieldLabels.push(`priority to ${updatedFields.priority}`);
+        }
+        if (updatedFields.assignedTeam) {
+          fieldLabels.push(`assigned team to ${updatedFields.assignedTeam}`);
+        }
+        if (updatedFields.category) {
+          fieldLabels.push(`category to ${updatedFields.category}`);
+        }
+        if (updatedFields.adminNotes) {
+          fieldLabels.push(`admin note updated`);
+        }
+      }
+
+      if (fieldLabels.length) {
+        label = `Updated ticket: ${fieldLabels.join(", ")}`;
+      } else if (entry.action) {
+        label = String(entry.action)
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
+
+      return {
+        label,
+        by,
+        at: timestamp,
+      };
+    })
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
 function renderInlineFormatting(value) {
   return escapeHtml(value)
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
@@ -288,6 +362,18 @@ function bindAddComment() {
   // Backend-first mode: add-comment UI is disabled until backend has a comment route.
 }
 
+async function loadTicketActivityLog(ticketId) {
+  if (!ticketId) return;
+  const logs = await fetchTicketActivityLogs(ticketId);
+  if (!logs.length) return;
+
+  const currentTimeline = Array.isArray(activeTicket?.timeline) ? activeTicket.timeline : [];
+  const activityTimeline = convertActivityLogsToTimelineItems(logs);
+
+  activeTicket.timeline = [...activityTimeline, ...currentTimeline];
+  renderTicket(activeTicket);
+}
+
 /* Extra frontend-only function disabled: add comment has no backend route yet.
 function bindAddComment() {
   const form = document.getElementById("pageCommentForm");
@@ -390,6 +476,7 @@ function init() {
   activeTicket = normalizeDetailTicket(ticket);
   renderTicket(activeTicket);
   bindAddComment();
+  loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId);
   // Bind delete button in ticket detail (single delete action placed here).
   const btnDelete = document.getElementById("btnDeleteTicket");
   if (btnDelete) {

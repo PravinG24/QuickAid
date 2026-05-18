@@ -3,47 +3,143 @@ import logging
 import json
 import os
 import base64
+import html
+import threading
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 from shared.secrets import get_secret
+from shared.activity_log import create_activity_log
+
+
+def _resolve_sendgrid_api_key() -> str:
+    for secret_name in ("SendGridApiKey", "SENDGRID-API-KEY"):
+        try:
+            return get_secret(secret_name, env_fallback="SENDGRID_API_KEY")
+        except RuntimeError:
+            continue
+    raise RuntimeError("SENDGRID_API_KEY / SendGridApiKey is not configured.")
+
+
+def _resolve_sendgrid_from_email() -> str:
+    for env_name in ("SENDGRID_FROM_EMAIL", "SENDER_EMAIL"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            return value
+    raise RuntimeError("SENDGRID_FROM_EMAIL is not configured.")
+
+
+def _resolve_admin_notification_email() -> str:
+    for env_name in ("SENDGRID_ADMIN_EMAIL", "ADMIN_EMAIL", "ENTRA_BOOTSTRAP_ADMIN_EMAIL"):
+        value = os.environ.get(env_name, "").strip().lower()
+        if value:
+            return value
+    return ""
+
+
+def _send_email(recipient_email: str, subject: str, html_body: str) -> bool:
+    """Send a single SendGrid email and log any failure."""
+    try:
+        api_key = _resolve_sendgrid_api_key()
+        from_email = _resolve_sendgrid_from_email()
+
+        message = Mail(
+            from_email=from_email,
+            to_emails=recipient_email,
+            subject=subject,
+            html_content=html_body,
+        )
+
+        response = SendGridAPIClient(api_key).send(message)
+        logging.info(
+            "SendGrid response for %s: status=%s body=%s",
+            recipient_email,
+            getattr(response, "status_code", None),
+            getattr(response, "body", b"")
+        )
+        if getattr(response, "status_code", None) not in (200, 201, 202):
+            raise RuntimeError(
+                f"SendGrid returned status {getattr(response, 'status_code', None)}"
+            )
+        return True
+    except Exception as exc:
+        logging.error("Failed to send SendGrid email to %s: %s", recipient_email, exc)
+        return False
 
 
 def send_confirmation_email(email: str, ticket_id: str, title: str, requester_name: str) -> bool:
     """Send ticket submission confirmation email via SendGrid."""
-    try:
-        api_key = get_secret("SENDGRID-API-KEY", env_fallback="SENDGRID_API_KEY")
-        from_email = os.environ.get("SENDGRID_FROM_EMAIL", "")
-        if not from_email:
-            raise RuntimeError("SENDGRID_FROM_EMAIL is not configured.")
+    safe_requester_name = html.escape(requester_name)
+    safe_ticket_id = html.escape(ticket_id)
+    safe_title = html.escape(title)
 
-        message = Mail(
-            from_email=from_email,
-            to_emails=email,
-            subject=f"Ticket Received: {title}",
-            html_content=f"""
-                <html>
-                  <body style="font-family: Arial, sans-serif; color: #1f2937;">
-                    <h2>Thank you for submitting a support ticket</h2>
-                    <p>Hi {requester_name},</p>
-                    <p>Your ticket has been submitted successfully.</p>
-                    <p><strong>Ticket ID:</strong> {ticket_id}</p>
-                    <p><strong>Subject:</strong> {title}</p>
-                    <p>We will review your request and respond as soon as possible.</p>
-                    <p>QuickAid Support Team</p>
-                  </body>
-                </html>
-            """,
-        )
+    return _send_email(
+        email,
+        f"Ticket Received: {title}",
+        f"""
+            <html>
+              <body style="font-family: Arial, sans-serif; color: #1f2937;">
+                <h2>Thank you for submitting a support ticket</h2>
+                <p>Hi {safe_requester_name},</p>
+                <p>Your ticket has been submitted successfully.</p>
+                <p><strong>Ticket ID:</strong> {safe_ticket_id}</p>
+                <p><strong>Subject:</strong> {safe_title}</p>
+                <p>We will review your request and respond as soon as possible.</p>
+                <p>QuickAid Support Team</p>
+              </body>
+            </html>
+        """,
+    )
 
-        SendGridAPIClient(api_key).send(message)
-        logging.info("Confirmation email sent to %s for ticket %s", email, ticket_id)
-        return True
-    except Exception as exc:
-        logging.error("Failed to send confirmation email: %s", exc)
+
+def send_admin_notification(admin_email: str, ticket_id: str, title: str, requester_name: str, requester_email: str, category: str, priority: str, description: str) -> bool:
+    """Notify the support admin when a new ticket is created."""
+    if not admin_email:
+        logging.warning("No admin notification email configured; skipping admin alert for %s.", ticket_id)
         return False
+
+    safe_admin_email = admin_email.strip().lower()
+    safe_ticket_id = html.escape(ticket_id)
+    safe_title = html.escape(title)
+    safe_requester_name = html.escape(requester_name)
+    safe_requester_email = html.escape(requester_email)
+    safe_category = html.escape(category)
+    safe_priority = html.escape(priority)
+    safe_description = html.escape(description).replace("\n", "<br>")
+
+    return _send_email(
+        safe_admin_email,
+        f"New Ticket Submitted: {title}",
+        f"""
+            <html>
+              <body style="font-family: Arial, sans-serif; color: #1f2937;">
+                <h2>New ticket submitted</h2>
+                <p>A new ticket has been created in QuickAid.</p>
+                <p><strong>Ticket ID:</strong> {safe_ticket_id}</p>
+                <p><strong>Subject:</strong> {safe_title}</p>
+                <p><strong>Requester:</strong> {safe_requester_name} ({safe_requester_email})</p>
+                <p><strong>Category:</strong> {safe_category}</p>
+                <p><strong>Priority:</strong> {safe_priority}</p>
+                <p><strong>Description:</strong><br>{safe_description}</p>
+              </body>
+            </html>
+        """,
+    )
+
+
+def _queue_notification_send(send_fn, *args) -> None:
+    """Fire-and-forget email send so ticket creation does not block on SendGrid."""
+
+    def _runner() -> None:
+        try:
+            send_fn(*args)
+        except Exception as exc:
+            logging.error("Background notification dispatch failed: %s", exc)
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -188,7 +284,33 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
         )
 
-    send_confirmation_email(email, ticket_id, title, requester_name)
+    admin_email = _resolve_admin_notification_email()
+    _queue_notification_send(send_confirmation_email, email, ticket_id, title, requester_name)
+    if admin_email and admin_email != email:
+        _queue_notification_send(
+            send_admin_notification,
+            admin_email,
+            ticket_id,
+            title,
+            requester_name,
+            email,
+            category,
+            priority,
+            description,
+        )
+
+    # ── Log activity ─────────────────────────────────────────────────────────
+    create_activity_log(
+        actor_email=email,
+        actor_type="user",
+        action="submitted_ticket",
+        ticket_id=ticket_id,
+        updated_fields={
+            "title": title,
+            "category": category,
+            "priority": priority
+        }
+    )
 
     return func.HttpResponse(
         json.dumps({

@@ -7,6 +7,8 @@ from azure.cosmos import CosmosClient, exceptions
 
 from shared.secrets import get_secret
 from shared.admin_auth import authorize_admin_request
+from shared.activity_log import create_activity_log
+from shared.notifications import create_notification
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("update_ticket function triggered.")
@@ -104,19 +106,77 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # ── Apply updates ────────────────────────────────────────────────────
         ticket = results[0]
+        old_values = {}  # Store old values for activity log
+        changed_fields = {}
 
         # Set default priority to Low if not already set
         if "priority" not in ticket:
             ticket["priority"] = "Low"
 
+        # Capture old values and determine which fields actually changed
+        for key, value in updates.items():
+            if key in ticket:
+                old_values[key] = ticket[key]
+            if ticket.get(key) != value:
+                changed_fields[key] = value
+
+        # Apply updates
         for key, value in updates.items():
             ticket[key] = value
 
         ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
         ticket["updated_at"] = ticket["updatedAt"]
 
+        # ── Extract admin email from Entra token ─────────────────────────────
+        admin_email = str(
+            payload.get("preferred_username")
+            or payload.get("email")
+            or payload.get("upn")
+            or "unknown@unknown.com"
+        ).strip().lower()
+
         # ── Save updated ticket ──────────────────────────────────────────────
         container.replace_item(item=ticket["id"], body=ticket)
+
+        # ── Log activity with proper admin identification ────────────────────
+        if changed_fields:
+            create_activity_log(
+                actor_email=admin_email,
+                actor_type="admin",
+                action="updated_ticket",
+                ticket_id=ticket_id,
+                updated_fields=changed_fields,
+                old_values=old_values
+            )
+
+        # ── Create notification for ticket creator ──────────────────────────
+        if changed_fields:
+            ticket_creator_email = str(ticket.get("email") or "").strip()
+            if ticket_creator_email:
+                updated_field_names = []
+                if "status" in changed_fields:
+                    updated_field_names.append(f"status to {changed_fields['status']}")
+                if "priority" in changed_fields:
+                    updated_field_names.append(f"priority to {changed_fields['priority']}")
+                if "assignedTeam" in changed_fields:
+                    updated_field_names.append(f"assigned team to {changed_fields['assignedTeam']}")
+                if "category" in changed_fields:
+                    updated_field_names.append(f"category to {changed_fields['category']}")
+                if "adminNotes" in changed_fields:
+                    updated_field_names.append("admin notes updated")
+
+                if updated_field_names:
+                    fields_str = ", ".join(updated_field_names)
+                    notification_message = f"Your ticket {ticket_id} has been updated: {fields_str}"
+                else:
+                    notification_message = f"Your ticket {ticket_id} has been updated."
+
+                create_notification(
+                    email=ticket_creator_email,
+                    ticket_id=ticket_id,
+                    message=notification_message,
+                    updated_fields=changed_fields
+                )
 
     except exceptions.CosmosHttpResponseError as e:
         logging.error(f"Cosmos DB error: {e}")
