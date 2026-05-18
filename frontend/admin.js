@@ -1,4 +1,5 @@
 const sessionKey = "quickaid-session-v1";
+const ticketCacheStorageKey = "quickaid-ticket-cache-v1";
 const DEFAULT_API_BASE = "http://localhost:7071";
 const API_BASE = Object.prototype.hasOwnProperty.call(window, "QUICKAID_API_BASE")
   ? window.QUICKAID_API_BASE
@@ -16,6 +17,21 @@ function loadSession() {
   } catch {
     return null;
   }
+}
+
+function loadRequesterTicketCache() {
+  try {
+    const raw = localStorage.getItem(ticketCacheStorageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRequesterTicketCache(items) {
+  localStorage.setItem(ticketCacheStorageKey, JSON.stringify(Array.isArray(items) ? items : []));
 }
 
 function loadLocalAccessRequests() {
@@ -1611,7 +1627,18 @@ async function persistOverviewTicketUpdate(ticket) {
     if (!response.ok) return false;
     const data = await response.json().catch(() => null);
     const savedTicket = data?.ticket ? normalizeAdminTicket(data.ticket) : null;
-    if (savedTicket) Object.assign(ticket, savedTicket);
+    if (savedTicket) {
+      Object.assign(ticket, savedTicket);
+      const cachedTickets = loadRequesterTicketCache();
+      if (cachedTickets.length) {
+        const nextCachedTickets = cachedTickets.map((item) =>
+          String(item?.ticket_id || item?.ticketId || item?.id || "") === String(savedTicket.ticketId)
+            ? { ...item, ...savedTicket }
+            : item
+        );
+        saveRequesterTicketCache(nextCachedTickets);
+      }
+    }
     return true;
   } catch {
     return false;
@@ -1647,7 +1674,8 @@ async function fetchActivityLogs(ticketId) {
     });
     if (!response.ok) return [];
     const body = await response.json().catch(() => null);
-    return Array.isArray(body.logs) ? body.logs : [];
+    const logs = Array.isArray(body?.logs) ? body.logs : [];
+    return logs.filter((entry) => String(entry?.ticket_id || "") === String(ticketId));
   } catch {
     return [];
   }
@@ -1707,6 +1735,15 @@ async function renderTicketDetails(ticket) {
   activeOverviewModalTicketId = ticket.ticketId;
   const activityLogs = await fetchActivityLogs(ticket.ticketId);
   ticket.timeline = convertActivityLogsToTimelineItems(activityLogs);
+  const latestLogTimestamp = ticket.timeline.reduce((latest, entry) => {
+    const timestamp = new Date(entry.at).getTime();
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, 0);
+  const ticketUpdatedAt = new Date(ticket.updated_at || 0).getTime();
+  const latestTimestamp = Math.max(ticketUpdatedAt || 0, latestLogTimestamp || 0);
+  if (latestTimestamp > 0) {
+    ticket.updated_at = new Date(latestTimestamp).toISOString();
+  }
 
   const extraSectionHtml = `
     <section class="detail-block">
@@ -1949,7 +1986,7 @@ function normalizeAdminTicket(ticket) {
     category: source.category || source.department || "General",
     priority: source.priority || "Medium",
     status: normalizedStatus || "Open",
-    assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || "Unassigned",
+    assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || source.assigned_team || "Unassigned",
     hasImage: Boolean(source.hasImage || source.image),
     image: source.image || null,
     comments: Array.isArray(source.comments) ? source.comments : [],

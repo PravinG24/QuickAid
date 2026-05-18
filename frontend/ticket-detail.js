@@ -153,6 +153,7 @@ function normalizeDetailTicket(source) {
   const ticketId = item.ticket_id || item.ticketId || item.id || "";
   const createdAt = item.created_at || item.createdAt || item.submitted_at || item.updated_at || item.updatedAt || new Date().toISOString();
   const updatedAt = item.updated_at || item.updatedAt || item.created_at || item.createdAt || item.submitted_at || new Date().toISOString();
+  const assignedTeam = item.assignedTeam || item.assigned_to || item.assignedTo || item.assigned_team || "";
   return {
     ...item,
     ticket_id: ticketId,
@@ -160,6 +161,9 @@ function normalizeDetailTicket(source) {
     subject: item.subject || item.title || "No subject",
     title: item.title || item.subject || "No subject",
     status: normalizeDetailStatus(item.status),
+    assignedTeam,
+    assigned_to: assignedTeam || item.assigned_to || "",
+    assignedTo: assignedTeam || item.assignedTo || "",
     created_at: createdAt,
     submitted_at: item.submitted_at || createdAt,
     updated_at: updatedAt,
@@ -244,13 +248,38 @@ function loadSession() {
   }
 }
 
+async function fetchTicketsByEmail(email) {
+  const safeEmail = String(email || "").trim().toLowerCase();
+  if (!safeEmail) return [];
+
+  try {
+    const response = await fetch(`${API_BASE}/api/get_ticket?email=${encodeURIComponent(safeEmail)}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const body = await response.json().catch(() => null);
+    return Array.isArray(body?.tickets) ? body.tickets.map(normalizeDetailTicket) : [];
+  } catch {
+    return [];
+  }
+}
+
 function persistActiveTicket() {
   if (!activeTicket) return;
   const tickets = loadCachedTickets();
   const activeId = String(activeTicket.ticket_id || activeTicket.ticketId || activeTicket.id || "");
-  const nextTickets = tickets.map((item) =>
+  const nextTickets = tickets.some((item) => String(item.ticket_id || item.ticketId || item.id || "") === activeId)
+    ? tickets.map((item) =>
     String(item.ticket_id || item.ticketId || item.id || "") === activeId ? { ...normalizeDetailTicket(activeTicket) } : item
-  );
+      )
+    : [...tickets, normalizeDetailTicket(activeTicket)];
   saveCachedTickets(nextTickets);
 }
 
@@ -292,7 +321,7 @@ function renderTicket(ticket) {
   description.innerHTML = renderDescriptionFormatting(ticket.description);
   submittedBy.textContent = ticket.name || "Requester";
   department.textContent = ticket.department || ticket.category || "General Inquiry";
-  assignedTo.textContent = ticket.assignedTo || ticket.assigned_to || "Unassigned";
+  assignedTo.textContent = ticket.assignedTeam || ticket.assignedTo || ticket.assigned_to || "Unassigned";
   createdAt.textContent = formatDateTime(ticket.created_at || ticket.submitted_at);
   updatedAt.textContent = formatDateTime(ticket.updated_at || ticket.submitted_at);
 
@@ -364,13 +393,43 @@ function bindAddComment() {
 
 async function loadTicketActivityLog(ticketId) {
   if (!ticketId) return;
-  const logs = await fetchTicketActivityLogs(ticketId);
-  if (!logs.length) return;
-
-  const currentTimeline = Array.isArray(activeTicket?.timeline) ? activeTicket.timeline : [];
+  const logs = (await fetchTicketActivityLogs(ticketId)).filter(
+    (entry) => String(entry?.ticket_id || "") === String(ticketId)
+  );
   const activityTimeline = convertActivityLogsToTimelineItems(logs);
+  activeTicket.timeline = activityTimeline;
+  const latestLogTimestamp = activityTimeline.reduce((latest, entry) => {
+    const timestamp = new Date(entry.at).getTime();
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, 0);
+  const ticketUpdatedAt = new Date(activeTicket.updated_at || activeTicket.updatedAt || 0).getTime();
+  const latestTimestamp = Math.max(ticketUpdatedAt || 0, latestLogTimestamp || 0);
+  if (latestTimestamp > 0) {
+    activeTicket.updated_at = new Date(latestTimestamp).toISOString();
+    activeTicket.updatedAt = activeTicket.updated_at;
+  }
+  persistActiveTicket();
+  renderTicket(activeTicket);
+}
 
-  activeTicket.timeline = [...activityTimeline, ...currentTimeline];
+async function refreshActiveTicketFromBackend() {
+  const session = loadSession();
+  const sessionEmail = String(session?.email || "").trim().toLowerCase();
+  const activeId = String(activeTicket?.ticket_id || activeTicket?.ticketId || activeTicket?.id || "");
+  if (!sessionEmail || !activeId) return;
+
+  const tickets = await fetchTicketsByEmail(sessionEmail);
+  if (!tickets.length) return;
+
+  saveCachedTickets(tickets);
+  const freshTicket = tickets.find((item) => String(item.ticket_id || item.ticketId || item.id || "") === activeId);
+  if (!freshTicket) return;
+
+  activeTicket = normalizeDetailTicket({
+    ...activeTicket,
+    ...freshTicket,
+  });
+  persistActiveTicket();
   renderTicket(activeTicket);
 }
 
@@ -476,7 +535,9 @@ function init() {
   activeTicket = normalizeDetailTicket(ticket);
   renderTicket(activeTicket);
   bindAddComment();
-  loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId);
+  refreshActiveTicketFromBackend()
+    .then(() => loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId))
+    .catch(() => loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId));
   // Bind delete button in ticket detail (single delete action placed here).
   const btnDelete = document.getElementById("btnDeleteTicket");
   if (btnDelete) {

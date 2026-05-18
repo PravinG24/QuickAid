@@ -132,6 +132,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "new_value": value,
                 })
             ticket[key] = value
+            if key == "assignedTeam":
+                ticket["assigned_to"] = value
+                ticket["assignedTo"] = value
+                ticket["assigned_team"] = value
 
         # ── Update timestamp ────────────────────────────────────────────────
         now = datetime.now(timezone.utc)

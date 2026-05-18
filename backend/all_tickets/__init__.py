@@ -6,6 +6,7 @@ import os
 
 from shared.secrets import get_secret
 from shared.admin_auth import authorize_admin_request
+from shared.admin_tickets import normalize_ticket
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -71,11 +72,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     # ── Strip Cosmos internal fields ─────────────────────────────────────────
-    cosmos_internal = {"_rid", "_self", "_etag", "_attachments", "_ts"}
-    tickets = [
-        {k: v for k, v in item.items() if k not in cosmos_internal}
-        for item in items
-    ]
+    tickets = [normalize_ticket(item) for item in items]
 
     # ── Return response ──────────────────────────────────────────────────────
     # ── Calculate metrics ───────────────────────────────────────────────────────
@@ -83,7 +80,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     category_counts = {}
     priority_counts = {}
     
-    for ticket in items:
+    for ticket in tickets:
         status = ticket.get("status", "Unknown")
         category = ticket.get("category", "Unknown")
         priority = ticket.get("priority", "Unknown")
