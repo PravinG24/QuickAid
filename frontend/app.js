@@ -909,6 +909,45 @@ function closeNotifDropdown() {
   btnNotifications?.setAttribute("aria-expanded", "false");
 }
 
+function renderNotifDropdown() {
+  const unreadCount = currentUserNotifications.filter((item) => !item.read).length;
+
+  if (notifUnreadCount) notifUnreadCount.textContent = String(unreadCount);
+  if (notifBadge) {
+    notifBadge.textContent = String(unreadCount);
+    notifBadge.classList.toggle("hidden", unreadCount <= 0);
+  }
+
+  if (!notifList) return;
+
+  if (!currentUserNotifications.length) {
+    notifList.innerHTML = '<li class="notif-empty">No notifications yet.</li>';
+    return;
+  }
+
+  notifList.innerHTML = currentUserNotifications
+    .map((item) => {
+      const title = escapeHtml(item.title || item.subject || item.message || "Notification");
+      const time = escapeHtml(item.time || item.createdAt || item.created_at || "");
+      const isRead = Boolean(item.read);
+      return `
+        <li class="notif-item ${isRead ? "notif-item-read" : "notif-item-unread"}" data-notif-id="${escapeHtml(String(item.id || item.notificationId || ""))}">
+          <span class="${isRead ? "notif-check" : "notif-dot"}" aria-hidden="true">${isRead ? "✓" : ""}</span>
+          <div class="notif-text">
+            <p class="notif-text-title">${title}</p>
+            <p class="notif-time">${time}</p>
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function markAllNotifAsRead() {
+  currentUserNotifications = currentUserNotifications.map((item) => ({ ...item, read: true }));
+  renderNotifDropdown();
+}
+
 function wireNotificationsUi() {
   if (!btnNotifications || !notifDropdown) return;
 
@@ -1449,20 +1488,22 @@ trackForm.addEventListener("submit", async (event) => {
   try {
     // Store current user email for notifications
     currentUserEmail = email;
-    
-    // Fetch tickets and notifications in parallel
+
+    // Fetch tickets first so a notification failure does not blank the dashboard.
     const ticketsData = await getTicketsByEmail(email);
-    const notificationsData = await getNotificationsByEmail(email);
-    
     lastLoadedTickets = Array.isArray(ticketsData.tickets) ? ticketsData.tickets.map(normalizeTicketRecord) : [];
     persistTicketCache(lastLoadedTickets);
-    
-    // Store notifications
-    currentUserNotifications = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : [];
-    
-    // Update UI
-    renderNotifDropdown();
     applyStatusFilter();
+
+    // Notifications are best-effort; keep ticket data visible even if they fail.
+    try {
+      const notificationsData = await getNotificationsByEmail(email);
+      currentUserNotifications = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : [];
+    } catch {
+      currentUserNotifications = [];
+    }
+
+    renderNotifDropdown();
   } catch (error) {
     lastLoadedTickets = [];
     currentUserNotifications = [];
@@ -1786,11 +1827,7 @@ if (!bootSession?.email) {
 if (bootSession?.email) {
   (async () => {
     try {
-      const [ticketsData, notificationsData] = await Promise.all([
-        getTicketsByEmail(bootSession.email),
-        getNotificationsByEmail(bootSession.email),
-      ]);
-
+      const ticketsData = await getTicketsByEmail(bootSession.email);
       lastLoadedTickets = Array.isArray(ticketsData?.tickets)
         ? ticketsData.tickets.map(normalizeTicketRecord)
         : [];
@@ -1798,9 +1835,16 @@ if (bootSession?.email) {
       applyStatusFilter();
 
       currentUserEmail = bootSession.email;
-      currentUserNotifications = Array.isArray(notificationsData?.notifications)
-        ? notificationsData.notifications
-        : [];
+
+      try {
+        const notificationsData = await getNotificationsByEmail(bootSession.email);
+        currentUserNotifications = Array.isArray(notificationsData?.notifications)
+          ? notificationsData.notifications
+          : [];
+      } catch {
+        currentUserNotifications = [];
+      }
+
       renderNotifDropdown();
     } catch {
       lastLoadedTickets = [];
