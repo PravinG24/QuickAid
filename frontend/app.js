@@ -1553,10 +1553,24 @@ trackForm.addEventListener("submit", async (event) => {
   trackBtn.disabled = true;
   trackBtn.textContent = "Searching...";
   try {
-    const data = await getTicketsByEmail(email);
-    lastLoadedTickets = Array.isArray(data.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+    // Store current user email for notifications
+    currentUserEmail = email;
+
+    // Fetch tickets first so a notification failure does not blank the dashboard.
+    const ticketsData = await getTicketsByEmail(email);
+    lastLoadedTickets = Array.isArray(ticketsData.tickets) ? ticketsData.tickets.map(normalizeTicketRecord) : [];
     persistTicketCache(lastLoadedTickets);
     applyStatusFilter();
+
+    // Notifications are best-effort; keep ticket data visible even if they fail.
+    try {
+      const notificationsData = await getNotificationsByEmail(email);
+      currentUserNotifications = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : [];
+    } catch {
+      currentUserNotifications = [];
+    }
+
+    renderNotifDropdown();
   } catch (error) {
     lastLoadedTickets = [];
     ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
@@ -1878,10 +1892,25 @@ if (!bootSession?.email) {
 if (bootSession?.email) {
   (async () => {
     try {
-      const data = await getTicketsByEmail(bootSession.email);
-      lastLoadedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeTicketRecord) : [];
+      const ticketsData = await getTicketsByEmail(bootSession.email);
+      lastLoadedTickets = Array.isArray(ticketsData?.tickets)
+        ? ticketsData.tickets.map(normalizeTicketRecord)
+        : [];
       persistTicketCache(lastLoadedTickets);
       applyStatusFilter();
+
+      currentUserEmail = bootSession.email;
+
+      try {
+        const notificationsData = await getNotificationsByEmail(bootSession.email);
+        currentUserNotifications = Array.isArray(notificationsData?.notifications)
+          ? notificationsData.notifications
+          : [];
+      } catch {
+        currentUserNotifications = [];
+      }
+
+      renderNotifDropdown();
     } catch {
       lastLoadedTickets = [];
       applyStatusFilter();

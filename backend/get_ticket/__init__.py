@@ -31,7 +31,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     category_filter = req.params.get("category", "").strip()
 
     # ── Build query ──────────────────────────────────────────────────────────
-    query  = "SELECT * FROM c WHERE c.type = 'ticket' AND c.email = @email"
+    # Support legacy documents that may have used alternate requester fields
+    # (e.g. requesterEmail, requester, requesterName). Match any of these
+    # so older tickets still surface in the user dashboard.
+    query = (
+        "SELECT * FROM c WHERE c.type = 'ticket' AND ("
+        "c.email = @email OR c.requesterEmail = @email OR c.requester = @email OR c.requesterName = @email)"
+    )
     params = [{"name": "@email", "value": email}]
 
     if status_filter:
