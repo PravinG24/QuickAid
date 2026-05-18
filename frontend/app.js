@@ -1463,10 +1463,20 @@ form.addEventListener("submit", async (event) => {
   clearFormErrors();
   hideSubmitResult();
 
+  const session = loadSession();
+  const sessionEmail = sanitize(session?.email).toLowerCase();
+  if (!sessionEmail || !emailRegex.test(sessionEmail)) {
+    showSubmitResult("error", "Your session is invalid. Please sign in again.");
+    window.location.href = "./login.html";
+    return;
+  }
+
+  if (form.email) form.email.value = sessionEmail;
+
   const payload = {
     request_type: sanitize(form.category.value),
     name: sanitize(form.name.value),
-    email: sanitize(form.email.value),
+    email: sessionEmail,
     category: sanitize(form.category.value),
     department: sanitize(form.category.value),
     assigned_to: sanitize(form.category.value),
