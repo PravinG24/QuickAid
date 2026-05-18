@@ -193,7 +193,7 @@ const overviewTeamOptions = [
   "Facilities",
 ];
 
-function buildAdminSelectOptions(options, currentValue, placeholderLabel = "Unchanged") {
+function buildAdminSelectOptions(options, currentValue) {
   const normalizedCurrent = String(currentValue || "").trim();
   return [
     `<option value="">${escapeHtml(placeholderLabel)}</option>`,
