@@ -121,9 +121,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             old_values = {}
             changed_fields = {}
 
-            # Set default priority to Low if not already set
+            # New tickets can remain unprioritized until admin triage.
             if "priority" not in ticket:
-                ticket["priority"] = "Low"
+                ticket["priority"] = ""
 
             # Capture old values and determine which fields actually changed
             for key, value in updates.items():
@@ -147,6 +147,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
             ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
             ticket["updated_at"] = ticket["updatedAt"]
+            ticket["isUpdated"] = True
 
             # Save updated ticket
             container.replace_item(item=ticket["id"], body=ticket)

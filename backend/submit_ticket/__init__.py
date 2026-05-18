@@ -264,7 +264,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     description = body["description"].strip()
     category = body["category"].strip()
     requester_name = str(body.get("name", "")).strip() or "Requester"
-    priority = str(body.get("priority", "Medium")).strip() or "Medium"
+    priority = str(body.get("priority", "")).strip()
     location = str(body.get("location", "")).strip() or None
     department = str(body.get("department", "")).strip() or None
 
@@ -277,8 +277,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     allowed_priorities = ["Low", "Medium", "High"]
-    if priority not in allowed_priorities:
-        priority = "Medium"
+    if priority and priority not in allowed_priorities:
+        priority = ""
 
     image_data = None
     image_filename = None
@@ -345,6 +345,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "location": location,
         "department": department,
         "status": "Open",
+        "isUpdated": False,
         "hasImage": image_data is not None,
         "createdAt": now.isoformat(),
         "updatedAt": now.isoformat(),

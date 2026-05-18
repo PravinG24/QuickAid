@@ -166,6 +166,7 @@ const bulkDrawerSelectionCount = document.getElementById("bulkDrawerSelectionCou
 const bulkDrawerTicketPreview = document.getElementById("bulkDrawerTicketPreview");
 const bulkDrawerStatusSelect = document.getElementById("bulkDrawerStatusSelect");
 const bulkDrawerTeamSelect = document.getElementById("bulkDrawerTeamSelect");
+const bulkDrawerPrioritySelect = document.getElementById("bulkDrawerPrioritySelect");
 const bulkDrawerSummary = document.getElementById("bulkDrawerSummary");
 const bulkDrawerApplyBtn = document.getElementById("bulkDrawerApplyBtn");
 const bulkDrawerClearSelection = document.getElementById("bulkDrawerClearSelection");
@@ -180,7 +181,7 @@ const addStaffPhoneInput = document.getElementById("addStaffPhone");
 const addStaffSubmitBtn = document.getElementById("addStaffSubmitBtn");
 const sharedTicketView = window.QuickAidTicketView || {};
 const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
-const overviewPriorityOptions = ["High", "Medium", "Low"];
+const overviewPriorityOptions = ["Unchanged", "High", "Medium", "Low"];
 const overviewTeamOptions = [
   "Unassigned",
   "IT Network Services",
@@ -203,6 +204,18 @@ function buildAdminSelectOptions(options, currentValue, placeholderLabel = "Unch
         )}</option>`
     ),
   ].join("");
+}
+
+function buildRequiredAdminSelectOptions(options, currentValue) {
+  const normalizedCurrent = String(currentValue || "").trim();
+  return options
+    .map(
+      (option) =>
+        `<option value="${escapeHtml(option)}" ${String(option) === normalizedCurrent ? "selected" : ""}>${escapeHtml(
+          option
+        )}</option>`
+    )
+    .join("");
 }
 
 const nowForAdminMock = new Date();
@@ -649,23 +662,20 @@ function updateBulkDrawerSummary() {
   const selectedCount = getSelectedManageTickets().length;
   const nextStatus = bulkDrawerStatusSelect instanceof HTMLSelectElement ? String(bulkDrawerStatusSelect.value || "").trim() : "";
   const nextTeam = bulkDrawerTeamSelect instanceof HTMLSelectElement ? String(bulkDrawerTeamSelect.value || "").trim() : "";
+  const nextPriority = bulkDrawerPrioritySelect instanceof HTMLSelectElement ? String(bulkDrawerPrioritySelect.value || "").trim() : "";
   if (!selectedCount) {
     bulkDrawerSummary.textContent = "No tickets selected. Select tickets from the table first.";
     return;
   }
-  if (!nextStatus && !nextTeam) {
-    bulkDrawerSummary.textContent = "Choose status, team, or both.";
+  if (!nextStatus && !nextTeam && !nextPriority) {
+    bulkDrawerSummary.textContent = "Choose status, team, priority, or a combination.";
     return;
   }
-  if (nextStatus && nextTeam) {
-    bulkDrawerSummary.textContent = `Will set status to ${nextStatus} and assign ${nextTeam} for ${selectedCount} ticket(s).`;
-    return;
-  }
-  if (nextStatus) {
-    bulkDrawerSummary.textContent = `Will update status to ${nextStatus} for ${selectedCount} ticket(s).`;
-    return;
-  }
-  bulkDrawerSummary.textContent = `Will assign ${nextTeam} for ${selectedCount} ticket(s).`;
+  const parts = [];
+  if (nextStatus) parts.push(`status to ${nextStatus}`);
+  if (nextPriority) parts.push(`priority to ${nextPriority}`);
+  if (nextTeam) parts.push(`assign ${nextTeam}`);
+  bulkDrawerSummary.textContent = `Will ${parts.join(" and ")} for ${selectedCount} ticket(s).`;
 }
 
 function updateBulkApplyState() {
@@ -679,7 +689,11 @@ function updateBulkApplyState() {
     bulkDrawerTeamSelect instanceof HTMLSelectElement
       ? String(bulkDrawerTeamSelect.value || "").trim()
       : "";
-  const hasChanges = Boolean(nextStatus || nextTeam);
+  const nextPriority =
+    bulkDrawerPrioritySelect instanceof HTMLSelectElement
+      ? String(bulkDrawerPrioritySelect.value || "").trim()
+      : "";
+  const hasChanges = Boolean(nextStatus || nextTeam || nextPriority);
   const canApply = selectedCount > 0 && hasChanges;
   bulkDrawerApplyBtn.disabled = !canApply;
   bulkDrawerApplyBtn.textContent = canApply ? "Apply Changes" : "Select Changes";
@@ -779,25 +793,10 @@ function createSupportTeamRecord(input, existingTeams) {
   return {
     id,
     name,
+    lead,
+    email,
     badge,
     badgeClass,
-    members: 1,
-    activeTickets: 0,
-    lead: lead || "Team Lead",
-    leadRole: "Support Staff",
-    email: email || "lead@campus.edu",
-    phone: "+1 (555) 000-0000",
-    permissions: 1,
-    stats: { active: 0, resolved: 0, avgTime: "N/A", satisfaction: "N/A" },
-    staffMembers: [
-      {
-        name: lead || "Team Lead",
-        role: "Support Staff",
-        email: email || "lead@campus.edu",
-        phone: "+1 (555) 000-0000",
-        activeTickets: 0,
-      },
-    ],
   };
 }
 
@@ -1142,7 +1141,7 @@ function computeOverviewDataFromTickets(tickets) {
   list.forEach((ticket) => {
     const category = String(ticket.category || "General");
     categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
-    const rawPriority = String(ticket.priority || "Medium").toLowerCase();
+    const rawPriority = String(ticket.priority || "").toLowerCase();
     const normalizedPriority =
       rawPriority === "critical" || rawPriority === "urgent"
         ? "High"
@@ -1150,8 +1149,12 @@ function computeOverviewDataFromTickets(tickets) {
           ? "Low"
           : rawPriority === "high"
             ? "High"
-            : "Medium";
-    priorityMap.set(normalizedPriority, Number(priorityMap.get(normalizedPriority) || 0) + 1);
+            : rawPriority === "medium"
+              ? "Medium"
+              : "";
+    if (normalizedPriority) {
+      priorityMap.set(normalizedPriority, Number(priorityMap.get(normalizedPriority) || 0) + 1);
+    }
     const createdDate = parseTicketCreatedDate(ticket);
     if (createdDate) createdByDay[createdDate.getDay()] += 1;
     const updatedDate = new Date(ticket.updated_at || ticket.created_at || ticket.submitted_at);
@@ -1261,6 +1264,19 @@ function syncOverviewRowControls(ticket) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
   updateRowChangeState(row, ticket);
+  updateRowUpdatedState(row, ticket);
+}
+
+function updateRowUpdatedState(row, ticket) {
+  if (!(row instanceof HTMLTableRowElement) || !ticket) return;
+  try {
+    const created = new Date(ticket.created_at || ticket.submitted_at || ticket.createdAt || 0).getTime();
+    const updated = new Date(ticket.updated_at || ticket.updatedAt || created).getTime();
+    const isUpdated = Boolean(ticket.isUpdated) || (!Number.isNaN(created) && !Number.isNaN(updated) && updated > created);
+    row.classList.toggle("row-updated", Boolean(isUpdated));
+  } catch (e) {
+    // ignore
+  }
 }
 
 function updateRowChangeState(row, ticket) {
@@ -1647,19 +1663,32 @@ async function persistBulkTicketUpdate(ticketIds, updates) {
   }
 }
 
-async function applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam) {
+async function applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam, nextPriority) {
   const updates = {};
   if (nextStatus) updates.status = nextStatus;
   if (nextTeam) updates.assignedTeam = nextTeam;
+  if (nextPriority) updates.priority = nextPriority;
 
   const ticketIds = selectedTickets.map((ticket) => ticket.ticketId);
+  const updatedAt = new Date().toISOString();
+  selectedTickets.forEach((ticket) => {
+    if (nextStatus) ticket.status = nextStatus;
+    if (nextTeam) ticket.assignedTeam = nextTeam;
+    if (nextPriority) ticket.priority = nextPriority;
+    ticket.updated_at = updatedAt;
+    ticket.updatedAt = updatedAt;
+    ticket.isUpdated = true;
+  });
+  recalculateOverviewMetrics();
+  renderManageTickets(allTicketsState);
+
   const result = await persistBulkTicketUpdate(ticketIds, updates);
 
   if (result.success && result.updated.length > 0) {
     result.updated.forEach((updatedTicket) => {
       const existingTicket = allTicketsState.find((t) => t.ticketId === updatedTicket.ticketId);
       if (existingTicket) {
-        Object.assign(existingTicket, updatedTicket);
+        Object.assign(existingTicket, updatedTicket, { isUpdated: true });
       }
     });
     recalculateOverviewMetrics();
@@ -1789,19 +1818,19 @@ async function renderTicketDetails(ticket) {
         <label>
           <span>Status</span>
           <select id="adminModalStatusSelect" class="table-select">
-            ${buildAdminSelectOptions(overviewStatusOptions, ticket.status, "Unchanged")}
+            ${buildRequiredAdminSelectOptions(overviewStatusOptions, ticket.status)}
           </select>
         </label>
         <label>
           <span>Priority</span>
           <select id="adminModalPrioritySelect" class="table-select">
-            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "Unchanged")}
+            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "No change")}
           </select>
         </label>
         <label>
           <span>Assigned Team</span>
           <select id="adminModalTeamSelect" class="table-select">
-            ${buildAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam, "Unchanged")}
+            ${buildRequiredAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam)}
           </select>
         </label>
       </div>
@@ -1874,6 +1903,7 @@ function bindOverviewInteractions() {
     updateBulkSelectionUi();
   });
 
+
   adminTicketModalContent?.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
@@ -1923,6 +1953,8 @@ function bindOverviewInteractions() {
   bulkDrawerStatusSelect?.addEventListener("change", updateBulkApplyState);
   bulkDrawerTeamSelect?.addEventListener("change", updateBulkDrawerSummary);
   bulkDrawerTeamSelect?.addEventListener("change", updateBulkApplyState);
+  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkDrawerSummary);
+  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkApplyState);
 
   bulkDrawerClearSelection?.addEventListener("click", () => {
     selectedManageTicketIds.clear();
@@ -1942,8 +1974,12 @@ function bindOverviewInteractions() {
       bulkDrawerTeamSelect instanceof HTMLSelectElement
         ? String(bulkDrawerTeamSelect.value || "").trim()
         : "";
-    if (!nextStatus && !nextTeam) {
-      showUpdateToast({ title: "Unchangeds selected", detail: "Choose status, team, or both.", tone: "warning" });
+    const nextPriority =
+      bulkDrawerPrioritySelect instanceof HTMLSelectElement
+        ? String(bulkDrawerPrioritySelect.value || "").trim()
+        : "";
+    if (!nextStatus && !nextTeam && !nextPriority) {
+      showUpdateToast({ title: "No changes selected", detail: "Choose status, team, priority, or a combination.", tone: "warning" });
       return;
     }
     const selectedTickets = getSelectedManageTickets();
@@ -1955,7 +1991,7 @@ function bindOverviewInteractions() {
       bulkDrawerApplyBtn.disabled = true;
       bulkDrawerApplyBtn.textContent = "Applying...";
     }
-    const ok = await applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam);
+    const ok = await applyBulkTicketChanges(selectedTickets, nextStatus, nextTeam, nextPriority);
     if (bulkDrawerApplyBtn instanceof HTMLButtonElement) {
       bulkDrawerApplyBtn.disabled = false;
       bulkDrawerApplyBtn.textContent = "Apply Changes";
@@ -1969,8 +2005,9 @@ function bindOverviewInteractions() {
     renderManageTickets(allTicketsState);
     const selectAll = document.getElementById("manageSelectAll");
     if (selectAll instanceof HTMLInputElement) selectAll.checked = false;
-    if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "";
-    if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "";
+    if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "Open";
+    if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "Unassigned";
+    if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) bulkDrawerPrioritySelect.value = "";
     closeBulkEditDrawer();
     updateBulkSelectionUi();
   });
@@ -2006,9 +2043,10 @@ function normalizeAdminTicket(ticket) {
     title: source.title || source.subject || source.issue || "No issue provided",
     description: source.description || source.issue || source.subject || source.title || "No description provided",
     category: source.category || source.department || "General",
-    priority: source.priority || "Medium",
+    priority: source.priority || "",
     status: normalizedStatus || "Open",
     assignedTeam: source.assignedTeam || source.assigned_to || source.assignedTo || "Unassigned",
+    isUpdated: Boolean(source.isUpdated),
     hasImage: Boolean(source.hasImage || source.image),
     image: source.image || null,
     comments: Array.isArray(source.comments) ? source.comments : [],
@@ -2042,17 +2080,17 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.category)}</td>
         <td>
           <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority, "Unchanged")}
+            ${buildAdminSelectOptions(overviewPriorityOptions, ticket.priority)}
           </select>
         </td>
         <td>
           <select class="table-select" data-control="status" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${buildAdminSelectOptions(overviewStatusOptions, ticket.status, "Unchanged")}
+            ${buildRequiredAdminSelectOptions(overviewStatusOptions, ticket.status)}
           </select>
         </td>
         <td>
           <select class="table-select" data-control="team" data-ticket-id="${escapeHtml(ticket.ticketId)}">
-            ${buildAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam, "Unchanged")}
+            ${buildRequiredAdminSelectOptions(overviewTeamOptions, ticket.assignedTeam)}
           </select>
         </td>
         <td>
@@ -2070,6 +2108,14 @@ function renderManageTickets(tickets) {
     `
     )
     .join("");
+  // ensure updated-row state is applied for existing tickets
+  const rows = Array.from(manageBody.querySelectorAll("tr"));
+  rows.forEach((row) => {
+    const control = row.querySelector("[data-ticket-id]");
+    const ticketId = control ? String(control.getAttribute("data-ticket-id") || "") : "";
+    const ticket = list.find((t) => String(t.ticketId) === ticketId);
+    if (ticket) updateRowUpdatedState(row, ticket);
+  });
   updateBulkSelectionUi();
 }
 
@@ -2274,6 +2320,8 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
   ticket.priority = nextPriority || ticket.priority;
   ticket.assignedTeam = nextTeam || ticket.assignedTeam;
   ticket.updated_at = new Date().toISOString();
+  ticket.updatedAt = ticket.updated_at;
+  ticket.isUpdated = true;
   recalculateOverviewMetrics();
   syncOverviewRowControls(ticket);
   if (activeOverviewModalTicketId === ticket.ticketId) renderTicketDetails(ticket);
@@ -2298,6 +2346,16 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
     triggerButton.disabled = false;
     triggerButton.textContent = "Update";
   }
+  // mark row as updated (persisted change) so background remains different
+  try {
+    const ticketsBody = document.getElementById("manageTicketsBody");
+    if (ticketsBody) {
+      const controls = Array.from(ticketsBody.querySelectorAll("[data-ticket-id]"));
+      const control = controls.find((node) => String(node.getAttribute("data-ticket-id") || "") === String(ticket.ticketId));
+      const row = control?.closest("tr");
+      if (row instanceof HTMLTableRowElement) updateRowUpdatedState(row, ticket);
+    }
+  } catch (e) {}
 }
 
 async function loadAdminData() {

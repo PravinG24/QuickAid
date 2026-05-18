@@ -323,29 +323,38 @@
           <div class="bulk-preview-list" id="bulkDrawerTicketPreview"></div>
           <p class="bulk-drawer-kicker">Changes to apply</p>
           <label class="admin-modal-field">
-            <span>Set status (optional)</span>
+            <span>Set status</span>
             <select id="bulkDrawerStatusSelect" class="table-select">
-              <option value="">No status change</option>
               <option value="Open">Open</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
             </select>
           </label>
           <label class="admin-modal-field">
-            <span>Assign team (optional)</span>
+            <span>Assign team</span>
             <select id="bulkDrawerTeamSelect" class="table-select">
-              <option value="">No team change</option>
-              <option value="Network Team">Network Team</option>
-              <option value="Software Team">Software Team</option>
-              <option value="Account Team">Account Team</option>
-              <option value="Hardware Team">Hardware Team</option>
-              <option value="Infrastructure">Infrastructure</option>
-              <option value="Application Support">Application Support</option>
+              <option value="Unassigned">Unassigned</option>
+              <option value="IT Network Services">IT Network Services</option>
+              <option value="Digital Learning Support">Digital Learning Support</option>
+              <option value="Accounts and Access">Accounts and Access</option>
+              <option value="Device Support">Device Support</option>
+              <option value="Campus Facilities">Campus Facilities</option>
+              <option value="Academic Systems">Academic Systems</option>
               <option value="Facilities">Facilities</option>
             </select>
           </label>
-          <p class="sub bulk-drawer-helper">Leave a field empty to keep the current value for selected tickets.</p>
-          <p class="bulk-drawer-summary" id="bulkDrawerSummary">Choose status, team, or both.</p>
+          <label class="admin-modal-field">
+            <span>Set priority (optional)</span>
+            <select id="bulkDrawerPrioritySelect" class="table-select">
+              <option value="">No change</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </label>
+          <p class="sub bulk-drawer-helper">Status and team are applied directly. Use &ldquo;No change&rdquo; only when priority should stay as is.</p>
+          <p class="bulk-drawer-summary" id="bulkDrawerSummary">Choose status, team, priority, or a combination.</p>
           <div class="table-actions admin-modal-actions">
             <button type="button" class="table-btn" id="bulkDrawerClearSelection">Clear Selection</button>
             <button type="button" class="table-btn update" id="bulkDrawerApplyBtn" disabled>Apply Changes</button>

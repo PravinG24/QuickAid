@@ -308,7 +308,7 @@ function toBackendTicketPayload(payload) {
     title: payload.subject,
     description: payload.description,
     category: toBackendCategory(payload.category || payload.department || payload.request_type),
-    priority: payload.priority || "Medium",
+    priority: payload.priority || "",
     location: payload.location || null,
     department: payload.department || null,
   };
@@ -361,7 +361,7 @@ function loadDraft() {
     form.name.value = draft.name || "";
     form.email.value = draft.email || "";
     if (form.department) form.department.value = draft.department || draft.assignTo || "";
-    if (form.priority) form.priority.value = "Medium";
+    if (form.priority) form.priority.value = "";
     form.subject.value = draft.subject || "";
     form.location.value = draft.location || "";
     form.description.value = draft.description || "";
@@ -501,11 +501,11 @@ function renderTickets(items) {
     const dueLabel = computeSlaDueLabel(t);
     const updatedStr = formatDateTime(t.updated_at || t.submitted_at || Date.now());
 
-    const priorityRaw = String(t.priority || "Medium");
+    const priorityRaw = String(t.priority || "");
     const priorityKey =
       priorityRaw.toLowerCase() === "urgent"
         ? "high"
-        : priorityRaw.toLowerCase() || "medium";
+        : priorityRaw.toLowerCase() || "unassigned";
 
     row.innerHTML = `
       <div class="ticket-card-top">
@@ -513,7 +513,7 @@ function renderTickets(items) {
           <div class="ticket-card-id">${escapeHtml(t.ticket_id || "N/A")}</div>
           <span class="badge ${statusBadgeClass(status)}">${prettyStatus(status)}</span>
           <span class="priority-pill priority-${escapeHtml(priorityKey)}">${escapeHtml(
-      priorityRaw
+      priorityRaw || "No priority"
     )}</span>
         </div>
         <div class="ticket-card-right">
@@ -752,11 +752,11 @@ function openTicketDetails(ticket) {
     ticketId: safeTicketId,
   };
   const status = mapSafeStatus(ticket.status);
-  const prRaw = String(ticket.priority || "Medium");
+  const prRaw = String(ticket.priority || "");
   const pLower = prRaw.toLowerCase();
   const prKey = pLower === "urgent" ? "high" : pLower;
   const normalized =
-    prKey === "low" || prKey === "high" ? prKey : "medium";
+    prKey === "low" || prKey === "high" ? prKey : prKey === "medium" ? "medium" : "unassigned";
   const updatedAt = ticket.updated_at || ticket.submitted_at || Date.now();
 
   if (
@@ -780,7 +780,7 @@ function openTicketDetails(ticket) {
     inlineDetailStatus.className = `badge ${statusBadgeClass(status)}`;
     inlineDetailStatus.textContent = prettyStatus(status);
     inlineDetailPriority.className = `detail-priority-pill priority-${normalized}`;
-    inlineDetailPriority.textContent = prRaw;
+    inlineDetailPriority.textContent = prRaw || "No priority";
     inlineDetailCategory.textContent = `Department: ${ticket.category || "General Inquiry"}`;
     inlineDetailLocation.textContent = `Location: ${ticket.location || "Not provided"}`;
     inlineDetailUpdated.textContent = `Updated: ${formatDateTime(updatedAt)}`;
@@ -1528,8 +1528,8 @@ form.addEventListener("submit", async (event) => {
     name: sanitize(form.name.value),
     email: sessionEmail,
     category: sanitize(form.category.value),
-    department: sanitize(form.category.value),
-    assigned_to: sanitize(form.category.value),
+    department: "Unassigned",
+    assigned_to: "Unassigned",
     subject: sanitize(form.subject.value),
     location: sanitize(form.location.value),
     description: sanitize(form.description.value),
@@ -1552,7 +1552,7 @@ form.addEventListener("submit", async (event) => {
     showSubmitResult(
       "success",
       `Success: Ticket ${result.ticket_id} submitted. Current status: ${
-        result.status || "New"
+        result.status || "Open"
       }.`
     );
     form.reset();
