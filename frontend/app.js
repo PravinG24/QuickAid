@@ -139,6 +139,10 @@ const notifUnreadCount = document.getElementById("notifUnreadCount");
 const notifList = document.getElementById("notifList");
 const btnMarkAllRead = document.getElementById("btnMarkAllRead");
 
+// Notifications storage
+let currentUserEmail = "";
+let currentUserNotifications = [];
+
 const createFormWrap = document.getElementById("createFormWrap");
 const btnNewTicket = document.getElementById("btnNewTicket");
 const btnCloseCreate = document.getElementById("btnCloseCreate");
@@ -426,6 +430,52 @@ async function getTicketsByEmail(email) {
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     const msg = error?.error_message || error?.error || "Unable to retrieve tickets right now.";
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+async function getNotificationsByEmail(email) {
+  // Backend-first mode: GET /api/notifications is the notification list source.
+  const response = await fetch(
+    `${API_BASE}/api/notifications?email=${encodeURIComponent(email)}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-Correlation-Id": crypto.randomUUID(),
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    const msg = error?.error_message || error?.error || "Unable to retrieve notifications.";
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+async function markNotificationAsRead(notificationId, email) {
+  // Backend-first mode: PATCH /api/notifications/{notificationId}/read marks notification as read.
+  const response = await fetch(
+    `${API_BASE}/api/notifications/${encodeURIComponent(notificationId)}/read`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Correlation-Id": crypto.randomUUID(),
+      },
+      body: JSON.stringify({ email }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    const msg = error?.error_message || error?.error || "Unable to mark notification as read.";
     throw new Error(msg);
   }
 
@@ -1573,6 +1623,8 @@ trackForm.addEventListener("submit", async (event) => {
     renderNotifDropdown();
   } catch (error) {
     lastLoadedTickets = [];
+    currentUserNotifications = [];
+    currentUserEmail = "";
     ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
   } finally {
     if (ticketsSkeleton) ticketsSkeleton.classList.add("hidden");
@@ -1913,6 +1965,8 @@ if (bootSession?.email) {
       renderNotifDropdown();
     } catch {
       lastLoadedTickets = [];
+      currentUserNotifications = [];
+      currentUserEmail = "";
       applyStatusFilter();
     }
   })();

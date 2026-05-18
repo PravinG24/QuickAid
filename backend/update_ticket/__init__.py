@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 
@@ -122,9 +123,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         # Apply updates
         for key, value in updates.items():
+            old_value = ticket.get(key)
+            if old_value != value:
+                changes.append({
+                    "field": key,
+                    "old_value": old_value,
+                    "new_value": value,
+                })
             ticket[key] = value
 
-        ticket["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        # ── Update timestamp ────────────────────────────────────────────────
+        now = datetime.now(timezone.utc)
+        ticket["updatedAt"] = now.isoformat()
         ticket["updated_at"] = ticket["updatedAt"]
 
         # ── Extract admin email from Entra token ─────────────────────────────

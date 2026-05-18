@@ -176,7 +176,7 @@ function assertAdminApprovalStatus(approvalLookup) {
   throw new Error("Unable to confirm admin approval status right now. Please try again.");
 }
 
-async function loginWithMicrosoftAdmin() {
+async function loginWithMicrosoft() {
   const msalInstance = getEntraMsalInstance();
   const scope = getEntraAdminScope();
   const loginResult = await msalInstance.loginPopup({
@@ -188,28 +188,40 @@ async function loginWithMicrosoftAdmin() {
     scopes: [scope],
   }).catch(async () => msalInstance.acquireTokenPopup({ account, scopes: [scope] }));
   const claims = decodeJwtPayload(tokenResult.accessToken || tokenResult.idToken || "");
-  if (!isAdminRoleClaim(claims)) {
-    throw new Error("Your account does not have the Admin app role.");
-  }
-  let approvalLookup = null;
-  try {
-    approvalLookup = await apiGet(
-      "/api/approvals/admin?mine=true",
-      tokenResult.accessToken || tokenResult.idToken || ""
-    );
-  } catch (error) {
-    const message = String(error?.message || "");
-    if (message.includes("404") || message.toLowerCase().includes("not found")) {
-      throw new Error("Admin approval service is not available yet. Please try again in a moment.");
-    }
-    throw new Error(message || "Failed to validate admin approval status.");
-  }
-  assertAdminApprovalStatus(approvalLookup);
   const email = getTokenEmail(claims, account);
   const name = getTokenName(claims, account, email);
+  const isAdmin = isAdminRoleClaim(claims);
+
+  if (isAdmin) {
+    let approvalLookup = null;
+    try {
+      approvalLookup = await apiGet(
+        "/api/approvals/admin?mine=true",
+        tokenResult.accessToken || tokenResult.idToken || ""
+      );
+    } catch (error) {
+      const message = String(error?.message || "");
+      if (message.includes("404") || message.toLowerCase().includes("not found")) {
+        throw new Error("Admin approval service is not available yet. Please try again in a moment.");
+      }
+      throw new Error(message || "Failed to validate admin approval status.");
+    }
+    assertAdminApprovalStatus(approvalLookup);
+  } else {
+    // For students: verify they are registered before allowing login
+    try {
+      const userLookup = await apiPost("/api/user_entra_lookup", { email });
+      if (!userLookup?.exists) {
+        throw new Error(userLookup?.message || "Student account not found. Please register first.");
+      }
+    } catch (error) {
+      throw new Error(error.message || "Failed to verify student account.");
+    }
+  }
+
   const session = {
     email,
-    role: "admin",
+    role: isAdmin ? "admin" : "user",
     name,
     token: tokenResult.accessToken || tokenResult.idToken || loginResult.idToken || "",
     provider: "entra",
@@ -491,7 +503,7 @@ if (loginForm) {
     setError("loginUsernameError", "");
     setError("loginPasswordError", "");
     try {
-      await loginWithMicrosoftAdmin();
+      await loginWithMicrosoft();
     } catch (error) {
       setError("loginPasswordError", error.message || "Microsoft sign-in failed.");
     }
