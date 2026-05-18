@@ -109,6 +109,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ticket = results[0]
         old_values = {}  # Store old values for activity log
         changed_fields = {}
+        changes = []
 
         # Set default priority to Low if not already set
         if "priority" not in ticket:
