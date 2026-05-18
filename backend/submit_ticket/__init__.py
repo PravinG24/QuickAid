@@ -5,6 +5,7 @@ import os
 import base64
 import html
 import threading
+import uuid
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, exceptions
 from sendgrid import SendGridAPIClient
@@ -326,10 +327,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     database = client.get_database_client(os.environ["COSMOS_DATABASE"])
     container = database.get_container_client(os.environ["COSMOS_CONTAINER"])
 
-    count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.type = 'ticket'"
-    count_result = list(container.query_items(query=count_query, enable_cross_partition_query=True))
-    count = count_result[0] if count_result else 0
-    ticket_id = f"TCKT-{str(count + 1).zfill(2)}"
+    ticket_id = f"TCKT-{uuid.uuid4().hex[:8].upper()}"
 
     now = datetime.now(timezone.utc)
     ticket = {
