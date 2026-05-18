@@ -1182,10 +1182,6 @@ tbody tr:hover {
   background: oklch(98% 0.01 248);
 }
 
-tbody tr.row-changed {
-  background: #f3f4f7;
-}
-
 .pill {
   padding: 0.18rem 0.46rem;
   border-radius: 999px;
