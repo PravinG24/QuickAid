@@ -297,8 +297,6 @@ function renderTicket(ticket) {
   const assignedTo = document.getElementById("pageAssignedTo");
   const createdAt = document.getElementById("pageCreatedAt");
   const updatedAt = document.getElementById("pageUpdatedAt");
-  const comments = document.getElementById("pageComments");
-  const commentsTitle = document.getElementById("pageCommentsTitle");
   const timeline = document.getElementById("pageTimeline");
 
   const safeTicketId = ticket.ticket_id || "N/A";
@@ -363,12 +361,6 @@ function renderTicket(ticket) {
     });
   }
 
-  const commentItems = Array.isArray(ticket.comments) ? ticket.comments : [];
-  if (commentsTitle) commentsTitle.textContent = `Comments (${commentItems.length})`;
-  comments.innerHTML = sharedTicketView.renderComments
-    ? sharedTicketView.renderComments(commentItems)
-    : '<li class="muted">No comments yet.</li>';
-
   const timelineItems = Array.isArray(ticket.timeline) ? ticket.timeline : [];
   const normalizedTimeline = timelineItems.map((entry) => ({
     ...entry,
@@ -380,10 +372,6 @@ function renderTicket(ticket) {
   timeline.innerHTML = sharedTicketView.renderTimeline
     ? sharedTicketView.renderTimeline(normalizedTimeline)
     : '<li class="muted">No timeline entries.</li>';
-}
-
-function bindAddComment() {
-  // Backend-first mode: add-comment UI is disabled until backend has a comment route.
 }
 
 async function loadTicketActivityLog(ticketId) {
@@ -428,74 +416,6 @@ async function refreshActiveTicketFromBackend() {
   renderTicket(activeTicket);
 }
 
-/* Extra frontend-only function disabled: add comment has no backend route yet.
-function bindAddComment() {
-  const form = document.getElementById("pageCommentForm");
-  const input = document.getElementById("pageNewComment");
-  const addButton = document.getElementById("pageAddCommentBtn");
-  const feedback = document.getElementById("pageCommentFeedback");
-  if (
-    !(form instanceof HTMLFormElement) ||
-    !(input instanceof HTMLTextAreaElement) ||
-    !(addButton instanceof HTMLButtonElement)
-  ) {
-    return;
-  }
-
-  const setFeedback = (message, isError = false) => {
-    if (!(feedback instanceof HTMLElement)) return;
-    feedback.textContent = message;
-    feedback.style.color = isError ? "#a93345" : "";
-  };
-
-  const setPending = (isPending) => {
-    addButton.disabled = isPending;
-    addButton.textContent = isPending ? "Adding..." : "Add Comment";
-  };
-
-  const submitComment = () => {
-    if (!activeTicket) {
-      setFeedback("Unable to add comment because ticket details were not found.", true);
-      return;
-    }
-    const text = input.value.trim();
-    if (!text) {
-      setFeedback("Please enter a comment before submitting.", true);
-      input.focus();
-      return;
-    }
-    const session = loadSession();
-    const commenter = session?.name || session?.email || "You";
-    const timestamp = new Date().toISOString();
-    const nextComment = { by: commenter, text, at: timestamp };
-    const nextTimeline = { label: "Comment added", by: commenter, at: timestamp };
-
-    setPending(true);
-    const existingComments = Array.isArray(activeTicket.comments) ? activeTicket.comments : [];
-    const existingTimeline = Array.isArray(activeTicket.timeline) ? activeTicket.timeline : [];
-    activeTicket.comments = [...existingComments, nextComment];
-    activeTicket.timeline = [...existingTimeline, nextTimeline];
-    activeTicket.updated_at = timestamp;
-    persistActiveTicket();
-    renderTicket(activeTicket);
-    input.value = "";
-    setFeedback("Comment added.");
-    setPending(false);
-  };
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    submitComment();
-  });
-  input.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      submitComment();
-    }
-  });
-}
-*/
-
 function init() {
   document.getElementById("btnBackToList")?.addEventListener("click", () => {
     window.location.href = "./dashboard.html";
@@ -513,23 +433,14 @@ function init() {
       description: "No matching cached ticket was found. Return to the ticket list and open preview again.",
       status: "New",
       priority: "Medium",
-      comments: [],
       timeline: [],
       attachments: [],
     });
-    const input = document.getElementById("pageNewComment");
-    const addButton = document.getElementById("pageAddCommentBtn");
-    const feedback = document.getElementById("pageCommentFeedback");
-    if (input instanceof HTMLTextAreaElement) input.disabled = true;
-    if (addButton instanceof HTMLButtonElement) addButton.disabled = true;
-    if (feedback instanceof HTMLElement) feedback.textContent = "Comments are disabled for missing tickets.";
-    bindAddComment();
     return;
   }
 
   activeTicket = normalizeDetailTicket(ticket);
   renderTicket(activeTicket);
-  bindAddComment();
   refreshActiveTicketFromBackend()
     .then(() => loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId))
     .catch(() => loadTicketActivityLog(activeTicket.ticket_id || activeTicket.ticketId));

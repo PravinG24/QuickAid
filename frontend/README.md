@@ -49,7 +49,6 @@ Route flow:
 By default, app runs in backend-first mode against local Azure Functions:
 - `http://localhost:7071`
 - demo/mock ticket creation is disabled
-- frontend-only features without backend routes are commented out or disabled
 
 ## Connect Real Backend
 
@@ -81,8 +80,6 @@ Currently supported endpoints:
 
 Disabled until backend routes exist:
 - `GET /api/admin/overview?range={today|week|month|year}`
-- `GET|POST /api/admin/support_teams`
-- `POST /api/admin/support_teams/{teamId}/staff`
 - `GET /api/admin/analytics`
 - `PATCH /api/admin/access_requests/{requestId}`
 

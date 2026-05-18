@@ -221,21 +221,10 @@
           <div class="section-head">
             <div>
               <h3 id="teamsTitle">Support Teams</h3>
-              <p class="sub">Manage staff, groups, and permissions.</p>
+              <p class="sub">Review and manage user access requests.</p>
             </div>
-            <button class="primary-btn" type="button" id="addTeamBtn">Add Team</button>
           </div>
-          <div class="support-tabs">
-            <button type="button" class="support-tab active" data-support-tab="groups">Groups</button>
-            <button type="button" class="support-tab" data-support-tab="permissions">Permissions</button>
-          </div>
-          <div class="support-search-row" id="supportSearchRow">
-            <input id="supportTeamSearch" class="table-select support-search-input" type="search" placeholder="Search team or staff by name ..." />
-          </div>
-          <div class="team-grid support-team-grid" id="supportTeamsGrid">
-            <article class="team-card">Loading support teams...</article>
-          </div>
-          <div class="support-access-panel hidden" id="supportAccessPanel">
+          <div class="support-access-panel" id="supportAccessPanel">
             <div class="section-head">
               <div>
                 <h3>Access Requests</h3>
@@ -261,40 +250,11 @@
                   </tr>
                 </thead>
                 <tbody id="supportAccessBody">
-                  <tr><td colspan="6">Select a team to view access requests.</td></tr>
+                  <tr><td colspan="6">Loading access requests...</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
-        </article>
-      </section>
-
-      <section id="support-team-detail" class="admin-page" aria-labelledby="teamDetailTitle">
-        <article class="section-block">
-          <div class="section-head">
-            <div>
-              <h3 id="teamDetailTitle">Team Leader</h3>
-              <p class="sub" id="teamDetailSubtitle">Manage selected support team.</p>
-            </div>
-            <button type="button" class="back-icon-btn" id="backToTeamsBtn" aria-label="Back to teams">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="support-team-detail" id="supportTeamDetail"></div>
-
-          <div class="support-staff-cards-section" id="supportGroupsPanel">
-            <div class="section-head">
-              <h3>Team Staff</h3>
-              <button type="button" class="primary-btn" id="addStaffInTeamBtn">Add Staff</button>
-            </div>
-            <div class="staff-card-grid" id="supportStaffCards">
-              <article class="team-card">Select a team to view staff.</article>
-            </div>
-          </div>
-
         </article>
       </section>
     </main>
@@ -354,79 +314,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Extra frontend-only function disabled: add team has no backend route yet.
-    <div id="addTeamModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addTeamModalTitle">
-      <div class="admin-modal-backdrop" data-close-add-team-modal="true"></div>
-      <div class="admin-modal-card" role="document">
-        <div class="admin-modal-head">
-          <h3 id="addTeamModalTitle">Add Team</h3>
-          <button type="button" class="admin-modal-close" data-close-add-team-modal="true" aria-label="Close">×</button>
-        </div>
-        <form id="addTeamForm" class="admin-modal-content">
-          <label class="admin-modal-field">
-            <span>Team Name</span>
-            <input id="addTeamName" class="table-select" type="text" placeholder="Example: Library Services" required />
-            <small class="admin-modal-error" id="addTeamNameError"></small>
-          </label>
-          <label class="admin-modal-field">
-            <span>Team Lead (Optional)</span>
-            <input id="addTeamLead" class="table-select" type="text" placeholder="Example: Emma Davis" />
-            <small class="admin-modal-error" id="addTeamLeadError"></small>
-          </label>
-          <label class="admin-modal-field">
-            <span>Team Lead Email (Optional)</span>
-            <input id="addTeamLeadEmail" class="table-select" type="email" placeholder="lead@campus.edu" />
-            <small class="admin-modal-error" id="addTeamLeadEmailError"></small>
-          </label>
-          <p class="sub">Backend note: this form saves locally first for preview, then attempts POST /api/admin/support_teams sync.</p>
-          <p class="sub">New teams are available immediately and will sync when the service is online.</p>
-          <div class="table-actions">
-            <button type="button" class="table-btn" data-close-add-team-modal="true">Cancel</button>
-            <button type="submit" class="table-btn update">Create Team</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    -->
-
-    <!-- Extra frontend-only function disabled: add staff has no backend route yet.
-    <div id="addStaffModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addStaffModalTitle">
-      <div class="admin-modal-backdrop" data-close-add-staff-modal="true"></div>
-      <div class="admin-modal-card" role="document">
-        <div class="admin-modal-head">
-          <h3 id="addStaffModalTitle">Add Staff to Team</h3>
-          <button type="button" class="admin-modal-close" data-close-add-staff-modal="true" aria-label="Close">×</button>
-        </div>
-        <form id="addStaffForm" class="admin-modal-content">
-          <p id="addStaffTeamHint" class="sub">Create a new support staff profile.</p>
-          <p class="sub">Backend note: staff is added locally first, then synced via POST /api/admin/support_teams/:teamId/staff.</p>
-          <p class="sub">Staff are added to the selected team and included in the active support roster.</p>
-          <p id="addStaffFormError" class="admin-form-error hidden" role="alert"></p>
-          <label class="admin-modal-field">
-            <span>Staff Name</span>
-            <input id="addStaffName" class="table-select" type="text" placeholder="Example: Noah King" required />
-          </label>
-          <label class="admin-modal-field">
-            <span>Role</span>
-            <input id="addStaffRole" class="table-select" type="text" placeholder="Example: Support Staff" />
-          </label>
-          <label class="admin-modal-field">
-            <span>Email</span>
-            <input id="addStaffEmail" class="table-select" type="email" placeholder="staff@campus.edu" />
-          </label>
-          <label class="admin-modal-field">
-            <span>Phone (Optional)</span>
-            <input id="addStaffPhone" class="table-select" type="text" placeholder="+1 (555) 000-0000" />
-          </label>
-          <div class="table-actions admin-modal-actions">
-            <button type="button" class="table-btn" data-close-add-staff-modal="true">Cancel</button>
-            <button type="submit" class="table-btn update" id="addStaffSubmitBtn">Add Staff</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    -->
 
     <footer class="admin-footer university-footer" aria-label="Admin portal footer">
       <div class="footer-grid">

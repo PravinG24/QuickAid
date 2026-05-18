@@ -48,9 +48,6 @@
         <button type="button" id="sidebarDashboardBtn" class="sidebar-item sidebar-item-active" data-active="true">
           Dashboard 
         </button>
-        <!-- Extra frontend-only function disabled: Knowledge Base has no backend route yet.
-        <button type="button" id="sidebarKnowledgeBtn" class="sidebar-item">Knowledge Base</button>
-        -->
       </nav>
     </aside>
     <button
@@ -300,14 +297,6 @@
               <small class="error" id="subjectError"></small>
             </label>
 
-            <!-- Extra frontend-only function disabled: Knowledge Base suggestions have no backend route yet.
-            <div class="kb-suggestions field-wide hidden" id="kbSuggestions" aria-live="polite">
-              <p class="helper-title">Suggested help articles</p>
-              <p class="kb-empty">Start typing your subject to see relevant self-help guides.</p>
-              <ul id="kbList"></ul>
-            </div>
-            -->
-
             <label class="field field-wide hidden">
               <span>Location</span>
               <input
@@ -507,22 +496,6 @@
           </aside>
         </div>
       </section>
-
-      <!-- Extra frontend-only function disabled: Knowledge Base has no backend route yet.
-      <section class="panel" id="knowledgeBasePanel" aria-labelledby="knowledgeBasePanelTitle">
-        <div class="panel-head">
-          <div class="panel-head-row">
-            <h2 id="knowledgeBasePanelTitle">Knowledge Base</h2>
-            <button type="button" class="ghost hidden" id="btnResetKbFeedback" aria-hidden="true">Reset feedback</button>
-          </div>
-          <p>Browse self-help guides before submitting a support request.</p>
-        </div>
-        <div class="kb-suggestions" aria-live="polite">
-          <p class="helper-title">Frequently Asked Questions</p>
-          <ul id="kbPageList"></ul>
-        </div>
-      </section>
-      -->
     </main>
     <div class="result hidden" id="submitResult" aria-live="polite"></div>
 

@@ -17,10 +17,6 @@ const templateButtons = document.querySelectorAll(".chip[data-template]");
 const statusFilter = document.getElementById("statusFilter");
 const sortBy = document.getElementById("sortBy");
 const subjectInput = document.getElementById("subject");
-const kbList = document.getElementById("kbList");
-const kbSuggestions = document.getElementById("kbSuggestions");
-const kbPageList = document.getElementById("kbPageList");
-const btnResetKbFeedback = document.getElementById("btnResetKbFeedback");
 const ticketSearch = document.getElementById("ticketSearch");
 const categoryFilter = document.getElementById("categoryFilter");
 const priorityFilter = document.getElementById("priorityFilter");
@@ -47,7 +43,6 @@ const btnProfile = document.getElementById("btnProfile");
 const btnLogout = document.getElementById("btnLogout");
 const btnAdminPanel = document.getElementById("btnAdminPanel");
 const sidebarDashboardBtn = document.getElementById("sidebarDashboardBtn");
-const sidebarKnowledgeBtn = document.getElementById("sidebarKnowledgeBtn");
 const sidebarLogoutBtn = document.getElementById("sidebarLogoutBtn");
 
 // ─── User sidebar toggle ───
@@ -141,7 +136,7 @@ const btnMarkAllRead = document.getElementById("btnMarkAllRead");
 
 // Notifications storage
 let currentUserEmail = "";
-let currentUserNotifications = [];
+let notificationRefreshTimer = 0;
 
 const createFormWrap = document.getElementById("createFormWrap");
 const btnNewTicket = document.getElementById("btnNewTicket");
@@ -151,7 +146,6 @@ const btnNewTicketTop = document.getElementById("btnNewTicketTop");
 const panels = {
   submit: document.getElementById("submitPanel"),
   track: document.getElementById("trackPanel"),
-  knowledge: document.getElementById("knowledgeBasePanel"),
 };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -458,30 +452,6 @@ async function getNotificationsByEmail(email) {
   return response.json();
 }
 
-async function markNotificationAsRead(notificationId, email) {
-  // Backend-first mode: PATCH /api/notifications/{notificationId}/read marks notification as read.
-  const response = await fetch(
-    `${API_BASE}/api/notifications/${encodeURIComponent(notificationId)}/read`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-Correlation-Id": crypto.randomUUID(),
-      },
-      body: JSON.stringify({ email }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    const msg = error?.error_message || error?.error || "Unable to mark notification as read.";
-    throw new Error(msg);
-  }
-
-  return response.json();
-}
-
 function renderTickets(items) {
   ticketsResult.innerHTML = "";
   if (!items.length) {
@@ -626,7 +596,6 @@ function applyStatusFilter() {
 
 function openTrackPanel() {
   if (panels?.submit) panels.submit.classList.remove("active");
-  if (panels?.knowledge) panels.knowledge.classList.remove("active");
   if (panels?.track) panels.track.classList.add("active");
   statusBanner?.classList.remove("hidden");
   quickMetrics?.classList.remove("hidden");
@@ -637,18 +606,7 @@ function openTrackPanel() {
 
 function setActiveSidebarItem(activeKey) {
   sidebarDashboardBtn?.classList.toggle("sidebar-item-active", activeKey === "dashboard");
-  sidebarKnowledgeBtn?.classList.toggle("sidebar-item-active", activeKey === "knowledge");
   sidebarDashboardBtn?.setAttribute("data-active", activeKey === "dashboard" ? "true" : "false");
-  sidebarKnowledgeBtn?.setAttribute("data-active", activeKey === "knowledge" ? "true" : "false");
-}
-
-function openKnowledgeBasePanel() {
-  if (panels?.submit) panels.submit.classList.remove("active");
-  if (panels?.track) panels.track.classList.remove("active");
-  if (panels?.knowledge) panels.knowledge.classList.add("active");
-  statusBanner?.classList.add("hidden");
-  quickMetrics?.classList.add("hidden");
-  renderKnowledgeBasePage();
 }
 
 function showSubmittedTicketTemporarily(ticket, requesterEmail) {
@@ -831,62 +789,6 @@ function ensureDemoSession() {
   return demo;
 }
 
-function seedDemoTickets(email) {
-  if (mockTickets.length) return;
-  const now = Date.now();
-  const mk = (overrides) => ({
-    ticket_id: randomTicketId(),
-    status: "New",
-    submitted_at: new Date(now - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    created_at: new Date(now - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    updated_at: new Date(now - 1000 * 60 * 60 * 24).toISOString(),
-    request_type: "Incident",
-    name: "Sarah Johnson",
-    email,
-    category: "IT Support",
-    priority: "High",
-    subject: "Projector not working in Room 203",
-    location: "Room 203",
-    description:
-      "The projector in classroom 203 is not displaying any image. The power light is on but no signal detected.",
-    department: "IT",
-    assignedTo: "Mike Chen",
-    comments: [
-      {
-        by: "IT Support",
-        text: "Thanks for reporting. We’re investigating and will update you shortly.",
-        at: new Date(now - 1000 * 60 * 60 * 10).toISOString(),
-      },
-    ],
-    timeline: [
-      { label: "Ticket created", at: new Date(now - 1000 * 60 * 60 * 24 * 2).toISOString() },
-      { label: "Assigned to technician", at: new Date(now - 1000 * 60 * 60 * 30).toISOString() },
-      { label: "Status changed to In Progress", at: new Date(now - 1000 * 60 * 60 * 22).toISOString() },
-    ],
-    ...overrides,
-  });
-
-  mockTickets.push(
-    mk({ status: "InProgress", priority: "High", category: "IT Support" }),
-    mk({
-      status: "New",
-      priority: "Medium",
-      category: "Facilities",
-      subject: "Air conditioner leaking - Block B Level 3",
-      description: "Water is dripping from the AC unit. Please advise maintenance.",
-      assignedTo: "Facilities Desk",
-    }),
-    mk({
-      status: "Resolved",
-      priority: "Low",
-      category: "Academic Admin",
-      subject: "Password reset request",
-      description: "Need password reset for portal access.",
-      assignedTo: "Academic Admin Desk",
-    })
-  );
-}
-
 function updateHeaderAuthUi() {
   const session = loadSession();
   const signedIn = Boolean(session && session.email);
@@ -911,31 +813,6 @@ function updateHeaderAuthUi() {
 // ─── Notifications dropdown wiring ───
 // Fetch notifications from backend when user signs in
 
-async function fetchNotifications(email) {
-  try {
-    const response = await fetch(
-      `${API_BASE}/api/notifications?email=${encodeURIComponent(email)}&unread_only=false`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "X-Correlation-Id": crypto.randomUUID(),
-        },
-      }
-    );
-
-    if (!response.ok) {
-      logging.warning("Failed to fetch notifications: %s", response.status);
-      return { notifications: [], unread_count: 0 };
-    }
-
-    return response.json();
-  } catch (error) {
-    logging.error("Error fetching notifications: %s", error.message);
-    return { notifications: [], unread_count: 0 };
-  }
-}
-
 function openNotifDropdown() {
   if (!notifDropdown) return;
   notifDropdown.classList.remove("hidden");
@@ -948,12 +825,19 @@ function closeNotifDropdown() {
   btnNotifications?.setAttribute("aria-expanded", "false");
 }
 
-async function renderNotifDropdown(email) {
+async function renderNotifDropdown(email = currentUserEmail || loadSession()?.email || "") {
   if (!notifList || !notifUnreadCount) return;
+  if (!email) return;
+  currentUserEmail = email;
 
-  const data = await fetchNotifications(email);
-  const notifications = data.notifications || [];
-  const unreadCount = data.unread_count || 0;
+  let data = { notifications: [], unread_count: 0 };
+  try {
+    data = await getNotificationsByEmail(email);
+  } catch {
+    data = { notifications: [], unread_count: 0 };
+  }
+  const notifications = Array.isArray(data.notifications) ? data.notifications : [];
+  const unreadCount = Number(data.unread_count || 0);
 
   notifUnreadCount.textContent = String(unreadCount);
   notifBadge?.classList.toggle("hidden", unreadCount === 0);
@@ -1020,6 +904,15 @@ async function renderNotifDropdown(email) {
   });
 }
 
+function startNotificationRefresh(email) {
+  if (!email) return;
+  currentUserEmail = email;
+  if (notificationRefreshTimer) window.clearInterval(notificationRefreshTimer);
+  notificationRefreshTimer = window.setInterval(() => {
+    void renderNotifDropdown(currentUserEmail);
+  }, 30000);
+}
+
 async function markNotificationAsRead(notificationId, email) {
   try {
     const response = await fetch(
@@ -1068,6 +961,8 @@ function wireNotificationsUi() {
   const session = loadSession();
   const email = session?.email;
   if (!email) return;
+  currentUserEmail = email;
+  startNotificationRefresh(email);
 
   btnNotifications.addEventListener("click", async () => {
     const isOpen = notifDropdown && !notifDropdown.classList.contains("hidden");
@@ -1095,7 +990,7 @@ function wireNotificationsUi() {
   });
 
   // Load notifications when signed in
-  renderNotifDropdown(email);
+  void renderNotifDropdown(email);
 }
 
 wireNotificationsUi();
@@ -1286,221 +1181,6 @@ function renderEmojiPicker() {
     .join("");
 }
 
-const kbFeedbackStorageKey = "quickaid-kb-feedback-v1";
-const knowledgeArticles = [
-  {
-    id: "kb-wifi-campus",
-    keywords: ["wifi", "wi-fi", "internet", "network", "disconnect"],
-    title: "Campus Wi-Fi troubleshooting guide",
-    faqs: [
-      {
-        q: "Why does campus Wi-Fi keep disconnecting every few minutes?",
-        a: "This usually happens when device roaming switches between nearby access points. Forget the network, reconnect, and disable aggressive battery optimization for Wi-Fi.",
-      },
-      {
-        q: "How do I confirm if the issue is device-specific or area-specific?",
-        a: "Test with one more device in the same location. If both fail, report building, floor, and nearest room so network support can inspect the access point health.",
-      },
-      {
-        q: "What should I include in my ticket for faster resolution?",
-        a: "Include device type, operating system, exact error message, and first observed time. Add screenshots of network diagnostics if available.",
-      },
-    ],
-    helped: 0,
-    notHelped: 0,
-  },
-  {
-    id: "kb-facilities-aircond",
-    keywords: ["aircond", "air conditioner", "facilities", "leak", "cooling"],
-    title: "Facilities issue report checklist",
-    faqs: [
-      {
-        q: "What information is required for an air conditioning issue?",
-        a: "Provide location, affected room, unit condition (no cooling, leaking, noise), and whether the issue is constant or intermittent.",
-      },
-      {
-        q: "Should I submit one ticket for multiple rooms?",
-        a: "Create separate tickets per room or unit. This helps facilities assign the right technician and track completion accurately.",
-      },
-      {
-        q: "Can I attach photos to speed up repair?",
-        a: "Yes. Add clear photos showing leak points, panel indicators, or thermostat readings to help pre-diagnose parts and tools needed.",
-      },
-    ],
-    helped: 0,
-    notHelped: 0,
-  },
-  {
-    id: "kb-portal-login",
-    keywords: ["portal", "login", "password", "account", "mfa"],
-    title: "Student portal access recovery steps",
-    faqs: [
-      {
-        q: "I reset my password but still cannot log in. What next?",
-        a: "Wait 3-5 minutes for directory sync, clear browser cache, and retry in an incognito window. Ensure the latest reset link was used.",
-      },
-      {
-        q: "How can I fix MFA prompt not appearing?",
-        a: "Confirm your authenticator app push permissions are enabled and device time is automatic. Then retry sign-in from a trusted network.",
-      },
-      {
-        q: "When should I submit a support ticket?",
-        a: "Submit if login fails after reset + cache clear + MFA checks. Include account type, exact error text, and timestamp of the failed attempt.",
-      },
-    ],
-    helped: 0,
-    notHelped: 0,
-  },
-  {
-    id: "kb-printer-queue",
-    keywords: ["printer", "print", "queue", "paper", "toner"],
-    title: "Printer support and queue reset guide",
-    faqs: [
-      {
-        q: "Why does my print job stay stuck in queue?",
-        a: "The queue may be locked by a previous failed job. Cancel pending jobs, restart print spooler, and resend one test page.",
-      },
-      {
-        q: "How do I report a shared printer outage?",
-        a: "Include printer ID, location, error code on panel, and whether copying/scanning still works. This helps route to the right support team.",
-      },
-      {
-        q: "What if prints are faded or missing colors?",
-        a: "Run nozzle/toner diagnostics first. If quality remains poor, submit a ticket with sample output photo for consumable replacement.",
-      },
-    ],
-    helped: 0,
-    notHelped: 0,
-  },
-];
-
-function loadKbFeedbackState() {
-  try {
-    const raw = localStorage.getItem(kbFeedbackStorageKey);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveKbFeedbackState(state) {
-  try {
-    localStorage.setItem(kbFeedbackStorageKey, JSON.stringify(state || {}));
-  } catch {
-    // no-op for storage errors
-  }
-}
-
-function getArticleFeedbackCounts(article, state) {
-  const saved = state?.[article.id];
-  return {
-    helped: Number(saved?.helped ?? article.helped ?? 0),
-    notHelped: Number(saved?.notHelped ?? article.notHelped ?? 0),
-    votedChoice: String(saved?.votedChoice || ""),
-  };
-}
-
-function renderKnowledgeBaseCards(targetList, articles, feedbackState) {
-  if (!targetList) return;
-  targetList.innerHTML = "";
-  articles.forEach((article) => {
-    const li = document.createElement("li");
-    li.className = "kb-article-card";
-    const counts = getArticleFeedbackCounts(article, feedbackState);
-    const hasVoted = Boolean(counts.votedChoice);
-    li.innerHTML = `
-      <div class="kb-article-head">
-        <strong>${escapeHtml(article.title)}</strong>
-        <div class="kb-feedback-stats">
-          <span>Helped: <b>${counts.helped}</b></span>
-          <span>Not helped: <b>${counts.notHelped}</b></span>
-        </div>
-      </div>
-      <div class="kb-faq-list">
-        ${article.faqs
-          .map(
-            (faq) => `
-          <details class="kb-faq-item">
-            <summary>${escapeHtml(faq.q)}</summary>
-            <p>${escapeHtml(faq.a)}</p>
-          </details>
-        `
-          )
-          .join("")}
-      </div>
-      <div class="kb-feedback-actions">
-        <span>Did this article solve your problem?</span>
-        <button
-          type="button"
-          class="kb-feedback-btn yes${counts.votedChoice === "helped" ? " is-selected" : ""}"
-          data-kb-id="${escapeHtml(article.id)}"
-          data-kb-vote="helped"
-          ${hasVoted ? "disabled" : ""}
-        >Yes, it helped</button>
-        <button
-          type="button"
-          class="kb-feedback-btn no${counts.votedChoice === "notHelped" ? " is-selected" : ""}"
-          data-kb-id="${escapeHtml(article.id)}"
-          data-kb-vote="notHelped"
-          ${hasVoted ? "disabled" : ""}
-        >No, still need help</button>
-        ${hasVoted ? '<span class="kb-feedback-note">Feedback recorded for this article.</span>' : ""}
-      </div>
-    `;
-    targetList.appendChild(li);
-  });
-}
-
-function updateKnowledgeSuggestions() {
-  const query = sanitize(subjectInput.value).toLowerCase();
-  kbList.innerHTML = "";
-  if (!query) {
-    kbSuggestions.querySelector(".kb-empty").style.display = "block";
-    return;
-  }
-  kbSuggestions.querySelector(".kb-empty").style.display = "none";
-  const feedbackState = loadKbFeedbackState();
-  const matches = knowledgeArticles
-    .filter((article) => article.keywords.some((k) => query.includes(k)))
-    .slice(0, 5);
-  if (!matches.length) {
-    const li = document.createElement("li");
-    li.textContent = "No direct match found. Continue submitting your ticket.";
-    kbList.appendChild(li);
-    return;
-  }
-  renderKnowledgeBaseCards(kbList, matches, feedbackState);
-}
-
-function renderKnowledgeBasePage() {
-  const feedbackState = loadKbFeedbackState();
-  renderKnowledgeBaseCards(kbPageList, knowledgeArticles, feedbackState);
-}
-
-function handleKbFeedbackVote(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
-  const btn = target.closest(".kb-feedback-btn");
-  if (!(btn instanceof HTMLButtonElement)) return;
-  const articleId = String(btn.dataset.kbId || "");
-  const voteType = String(btn.dataset.kbVote || "");
-  if (!articleId || !["helped", "notHelped"].includes(voteType)) return;
-  const feedbackState = loadKbFeedbackState();
-  const current = feedbackState[articleId] || { helped: 0, notHelped: 0, votedChoice: "" };
-  if (current.votedChoice) return;
-  current[voteType] = Number(current[voteType] || 0) + 1;
-  current.votedChoice = voteType;
-  feedbackState[articleId] = current;
-  saveKbFeedbackState(feedbackState);
-  updateKnowledgeSuggestions();
-  renderKnowledgeBasePage();
-  if (voteType === "notHelped") {
-    setActiveSidebarItem("dashboard");
-    openCreateModal();
-  }
-}
-
 ["name", "email", "category", "department", "subject", "description", "trackEmail"].forEach((fieldId) => {
   const input = document.getElementById(fieldId);
   if (!input) return;
@@ -1613,17 +1293,11 @@ trackForm.addEventListener("submit", async (event) => {
     applyStatusFilter();
 
     // Notifications are best-effort; keep ticket data visible even if they fail.
-    try {
-      const notificationsData = await getNotificationsByEmail(email);
-      currentUserNotifications = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : [];
-    } catch {
-      currentUserNotifications = [];
-    }
-
-    renderNotifDropdown();
+    currentUserEmail = email;
+    startNotificationRefresh(email);
+    await renderNotifDropdown(email);
   } catch (error) {
     lastLoadedTickets = [];
-    currentUserNotifications = [];
     currentUserEmail = "";
     ticketsResult.innerHTML = `<div class="ticket-card">${escapeHtml(error.message)}</div>`;
   } finally {
@@ -1673,7 +1347,6 @@ templateButtons.forEach((button) => {
     form.description.value = tpl.description;
     setTextContent(descCount, form.description.value.length);
     hideSubmitResult();
-    updateKnowledgeSuggestions();
     saveDraft();
     if (createFormWrap) {
       createFormWrap.classList.remove("hidden");
@@ -1704,13 +1377,7 @@ if (statusTabs?.length) {
   });
 }
 
-if (subjectInput) subjectInput.addEventListener("input", () => {
-  // Extra frontend-only knowledge suggestions are disabled until backend has a knowledge-base API.
-  saveDraft();
-});
-// Extra frontend-only knowledge-base feedback is disabled until backend has KB routes.
-// kbList?.addEventListener("click", handleKbFeedbackVote);
-// kbPageList?.addEventListener("click", handleKbFeedbackVote);
+if (subjectInput) subjectInput.addEventListener("input", saveDraft);
 if (attachmentInput) attachmentInput.addEventListener("change", validateAttachment);
 if (attachmentDropzone && attachmentInput) {
   const trigger = () => attachmentInput.click();
@@ -1769,28 +1436,9 @@ sidebarDashboardBtn?.addEventListener("click", () => {
   openTrackPanel();
 });
 
-// Extra frontend-only Knowledge Base page is disabled until backend has KB routes.
-// sidebarKnowledgeBtn?.addEventListener("click", () => {
-//   setActiveSidebarItem("knowledge");
-//   openKnowledgeBasePanel();
-// });
-
-// Extra frontend-only KB feedback reset is disabled until backend has KB routes.
-// btnResetKbFeedback?.addEventListener("click", () => {
-//   try {
-//     localStorage.removeItem(kbFeedbackStorageKey);
-//   } catch {
-//     // no-op for storage errors
-//   }
-//   updateKnowledgeSuggestions();
-//   renderKnowledgeBasePage();
-// });
-
 form.addEventListener("reset", () => {
   setTimeout(() => {
     setTextContent(descCount, "0");
-    if (kbList) kbList.innerHTML = "";
-    kbSuggestions?.querySelector(".kb-empty")?.style.setProperty("display", "block");
     setTextContent(attachmentInfo, "");
     if (attachmentPreview) attachmentPreview.classList.add("hidden");
     clearDraft();
@@ -1810,9 +1458,6 @@ tabButtons.forEach((button) => {
 });
 
 loadDraft();
-// Extra frontend-only KB rendering is disabled until backend has KB routes.
-// updateKnowledgeSuggestions();
-// renderKnowledgeBasePage();
 setActiveSidebarItem("dashboard");
 
 // -----------------------------
@@ -1952,20 +1597,10 @@ if (bootSession?.email) {
       applyStatusFilter();
 
       currentUserEmail = bootSession.email;
-
-      try {
-        const notificationsData = await getNotificationsByEmail(bootSession.email);
-        currentUserNotifications = Array.isArray(notificationsData?.notifications)
-          ? notificationsData.notifications
-          : [];
-      } catch {
-        currentUserNotifications = [];
-      }
-
-      renderNotifDropdown();
+      startNotificationRefresh(bootSession.email);
+      await renderNotifDropdown(bootSession.email);
     } catch {
       lastLoadedTickets = [];
-      currentUserNotifications = [];
       currentUserEmail = "";
       applyStatusFilter();
     }

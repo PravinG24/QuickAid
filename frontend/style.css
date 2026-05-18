@@ -752,137 +752,6 @@ textarea:focus-visible {
   color: var(--text-muted);
 }
 
-.helper-card {
-  border: 1px solid #cee0f6;
-  background: #f6faff;
-  border-radius: 0.85rem;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.helper-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.kb-suggestions {
-  border: 1px dashed #bdd4f0;
-  border-radius: 0.75rem;
-  background: #f8fbff;
-  padding: 0.75rem;
-}
-
-.kb-empty {
-  margin: 0.45rem 0 0;
-  color: var(--text-muted);
-}
-
-#kbList,
-#kbPageList {
-  margin: 0.5rem 0 0;
-  padding-left: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.65rem;
-}
-
-#kbList li,
-#kbPageList li {
-  margin-bottom: 0;
-}
-
-.kb-article-card {
-  border: 1px solid #cfe0f4;
-  border-radius: 0.7rem;
-  background: #fff;
-  padding: 0.65rem;
-}
-
-.kb-article-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.65rem;
-  align-items: flex-start;
-}
-
-.kb-feedback-stats {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  font-size: 0.79rem;
-  color: var(--text-muted);
-}
-
-.kb-faq-list {
-  margin-top: 0.5rem;
-  display: grid;
-  gap: 0.35rem;
-}
-
-.kb-faq-item {
-  border: 1px solid #e1eaf5;
-  border-radius: 0.55rem;
-  background: #fbfdff;
-  padding: 0.4rem 0.5rem;
-}
-
-.kb-faq-item summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.kb-faq-item p {
-  margin: 0.35rem 0 0;
-  color: var(--text-muted);
-}
-
-.kb-feedback-actions {
-  margin-top: 0.55rem;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  font-size: 0.83rem;
-  color: var(--text-muted);
-}
-
-.kb-feedback-btn {
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #fff;
-  padding: 0.24rem 0.55rem;
-  font: inherit;
-  font-size: 0.79rem;
-  cursor: pointer;
-}
-
-.kb-feedback-btn.yes {
-  border-color: #bde0cc;
-  color: #1f7a57;
-  background: #f2fbf6;
-}
-
-.kb-feedback-btn.no {
-  border-color: #f2c8cf;
-  color: #a93345;
-  background: #fff6f8;
-}
-
-.kb-feedback-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.kb-feedback-btn.is-selected {
-  box-shadow: inset 0 0 0 1px currentColor;
-}
-
-.kb-feedback-note {
-  margin-left: 0.2rem;
-  font-size: 0.78rem;
-  color: #2f4f7b;
-}
-
 .template-row {
   display: flex;
   flex-wrap: wrap;
@@ -2192,45 +2061,10 @@ aside {
   color: var(--muted);
 }
 
-.comment-list {
-  list-style: none;
-  padding-left: 0;
-  margin: 0.45rem 0 0;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.comment-list li {
-  border: 1px solid var(--line);
-  border-radius: 0.85rem;
-  padding: 0.65rem 0.75rem;
-  background: #fbfdff;
-}
-
-.comment-compose {
-  margin-top: 0.75rem;
-  display: grid;
-  gap: 0.6rem;
-}
-
 .detail-actions {
   margin-top: 0.75rem;
   display: flex;
   justify-content: flex-end;
-}
-
-#pageCommentStatus {
-  margin: 0.5rem 0 0;
-}
-
-.comment-status-error {
-  color: #a93345;
-  font-weight: 600;
-}
-
-.comment-status-success {
-  color: #1f7a57;
-  font-weight: 600;
 }
 
 /* Dedicated ticket detail page */
@@ -2345,30 +2179,6 @@ aside {
   border-radius: 0.5rem;
 }
 
-.comment-bubble {
-  border: 1px solid var(--line);
-  border-radius: 0.85rem;
-  background: #fff;
-  padding: 0.7rem;
-}
-
-.comment-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.6rem;
-  margin-bottom: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.comment-body {
-  border: 1px solid #e7edf5;
-  border-radius: 0.75rem;
-  background: #f7faff;
-  padding: 0.6rem 0.65rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
 .timeline-list {
   gap: 0.5rem;
 }
@@ -2440,14 +2250,6 @@ aside {
 
 .timeline-list.activity-log .timeline-body .muted {
   margin-top: 0.22rem;
-}
-
-.comment-compose textarea {
-  width: 100%;
-}
-
-.comment-compose button {
-  width: 160px;
 }
 
 .info-block {

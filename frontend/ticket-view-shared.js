@@ -48,24 +48,6 @@ function quickAidBadgeClass(status) {
   return "badge-new";
 }
 
-function quickAidRenderComments(items) {
-  const comments = Array.isArray(items) ? items : [];
-  if (!comments.length) return '<li class="ticket-shared-muted">No comments yet.</li>';
-  return comments
-    .map(
-      (comment) => `
-        <li class="comment-bubble">
-          <div class="comment-head">
-            <strong>${quickAidEscapeHtml(comment.by || "Support")}</strong>
-            <span class="ticket-shared-muted">${quickAidEscapeHtml(quickAidFormatDateTime(comment.at))}</span>
-          </div>
-          <div class="comment-body">${quickAidEscapeHtml(comment.text || "")}</div>
-        </li>
-      `
-    )
-    .join("");
-}
-
 function quickAidRenderTimeline(items) {
   const timeline = Array.isArray(items) ? items : [];
   if (!timeline.length) return '<li class="ticket-shared-muted">No activity yet.</li>';
@@ -76,7 +58,7 @@ function quickAidRenderTimeline(items) {
           <div class="timeline-dot"></div>
           <div class="timeline-body">
             <strong>${quickAidEscapeHtml(entry.label || "Event")}</strong>
-            <div class="ticket-shared-muted">${quickAidEscapeHtml(entry.by || "System")} • ${quickAidEscapeHtml(
+            <div class="ticket-shared-muted"> "Admin" • ${quickAidEscapeHtml(
         quickAidFormatDateTime(entry.at)
       )}</div>
           </div>
@@ -102,7 +84,6 @@ function quickAidRenderTicketImage(ticket) {
 
 function quickAidRenderTicketDetailLayout(ticket, options = {}) {
   const safeTicket = ticket || {};
-  const comments = Array.isArray(safeTicket.comments) ? safeTicket.comments : [];
   const timeline = Array.isArray(safeTicket.timeline) ? safeTicket.timeline : [];
   const extraSectionHtml = String(options.extraSectionHtml || "");
   return `
@@ -169,11 +150,6 @@ function quickAidRenderTicketDetailLayout(ticket, options = {}) {
       </aside>
     </section>
     <section class="detail-block">
-      <h3>Comments (${comments.length})</h3>
-      <p class="muted">Conversation and updates from team members</p>
-      <ul class="comment-list">${quickAidRenderComments(comments)}</ul>
-    </section>
-    <section class="detail-block">
       <h3>Activity Log</h3>
       <ul class="timeline-list activity-log">${quickAidRenderTimeline(timeline)}</ul>
     </section>
@@ -187,7 +163,6 @@ window.QuickAidTicketView = {
   priorityClass: quickAidPriorityClass,
   badgeClass: quickAidBadgeClass,
   renderDescriptionFormatting: quickAidRenderDescriptionFormatting,
-  renderComments: quickAidRenderComments,
   renderTimeline: quickAidRenderTimeline,
   renderTicketDetailLayout: quickAidRenderTicketDetailLayout,
   renderTicketImage: quickAidRenderTicketImage,
