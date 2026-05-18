@@ -181,6 +181,7 @@ const bulkEditDrawer = document.getElementById("bulkEditDrawer");
 const bulkDrawerSelectionCount = document.getElementById("bulkDrawerSelectionCount");
 const bulkDrawerTicketPreview = document.getElementById("bulkDrawerTicketPreview");
 const bulkDrawerStatusSelect = document.getElementById("bulkDrawerStatusSelect");
+const bulkDrawerPrioritySelect = document.getElementById("bulkDrawerPrioritySelect");
 const bulkDrawerTeamSelect = document.getElementById("bulkDrawerTeamSelect");
 const bulkDrawerSummary = document.getElementById("bulkDrawerSummary");
 const bulkDrawerApplyBtn = document.getElementById("bulkDrawerApplyBtn");
@@ -195,9 +196,11 @@ const addStaffEmailInput = document.getElementById("addStaffEmail");
 const addStaffPhoneInput = document.getElementById("addStaffPhone");
 const addStaffSubmitBtn = document.getElementById("addStaffSubmitBtn");
 const sharedTicketView = window.QuickAidTicketView || {};
+const BULK_UNCHANGED_VALUE = "__unchanged__";
 const overviewStatusOptions = ["Open", "In Progress", "Resolved", "Closed"];
 const overviewPriorityOptions = ["High", "Medium", "Low"];
 const overviewTeamOptions = [
+  "Unassigned",
   "IT Network Services",
   "Digital Learning Support",
   "Accounts and Access",
@@ -206,6 +209,33 @@ const overviewTeamOptions = [
   "Academic Systems",
   "Facilities",
 ];
+
+function renderOptionsMarkup(options, selectedValue = "") {
+  return options
+    .map((option) => {
+      const selected = String(option) === String(selectedValue) ? "selected" : "";
+      return `<option value="${escapeHtml(option)}" ${selected}>${escapeHtml(option)}</option>`;
+    })
+    .join("");
+}
+
+function initializeBulkDrawerSelects() {
+  if (bulkDrawerStatusSelect instanceof HTMLSelectElement) {
+    bulkDrawerStatusSelect.innerHTML = renderOptionsMarkup(overviewStatusOptions, "Open");
+    bulkDrawerStatusSelect.value = "Open";
+  }
+  if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) {
+    bulkDrawerPrioritySelect.innerHTML = [
+      `<option value="${escapeHtml(BULK_UNCHANGED_VALUE)}" selected>Unchanged</option>`,
+      renderOptionsMarkup(overviewPriorityOptions),
+    ].join("");
+    bulkDrawerPrioritySelect.value = BULK_UNCHANGED_VALUE;
+  }
+  if (bulkDrawerTeamSelect instanceof HTMLSelectElement) {
+    bulkDrawerTeamSelect.innerHTML = renderOptionsMarkup(overviewTeamOptions, "Unassigned");
+    bulkDrawerTeamSelect.value = "Unassigned";
+  }
+}
 
 const nowForAdminMock = new Date();
 function isoFromOffset({ days = 0, months = 0, years = 0, hours = 10, minutes = 0 }) {
@@ -483,6 +513,8 @@ const mockAdminData = {
   },
 };
 
+initializeBulkDrawerSelects();
+
 // Keep manage list aligned with overview mock tickets for range testing.
 if (!Array.isArray(mockAdminData.manageTickets.tickets) || !mockAdminData.manageTickets.tickets.length) {
   mockAdminData.manageTickets.tickets = mockAdminData.overview.tickets.map((ticket) => ({ ...ticket }));
@@ -639,6 +671,9 @@ function closeBulkEditDrawer() {
 }
 
 function openBulkEditDrawer() {
+  if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "Open";
+  if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) bulkDrawerPrioritySelect.value = BULK_UNCHANGED_VALUE;
+  if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "Unassigned";
   bulkEditDrawer?.classList.remove("hidden");
 }
 
@@ -649,39 +684,31 @@ function getSelectedManageTickets() {
 function updateBulkDrawerSummary() {
   if (!bulkDrawerSummary) return;
   const selectedCount = getSelectedManageTickets().length;
-  const nextStatus = bulkDrawerStatusSelect instanceof HTMLSelectElement ? String(bulkDrawerStatusSelect.value || "").trim() : "";
-  const nextTeam = bulkDrawerTeamSelect instanceof HTMLSelectElement ? String(bulkDrawerTeamSelect.value || "").trim() : "";
+  const nextStatus = getSelectValueOrEmpty(bulkDrawerStatusSelect);
+  const nextPriority = getSelectValueOrEmpty(bulkDrawerPrioritySelect);
+  const nextTeam = getSelectValueOrEmpty(bulkDrawerTeamSelect);
   if (!selectedCount) {
     bulkDrawerSummary.textContent = "No tickets selected. Select tickets from the table first.";
     return;
   }
-  if (!nextStatus && !nextTeam) {
-    bulkDrawerSummary.textContent = "Choose status, team, or both.";
+  const reviewItems = [];
+  if (nextStatus) reviewItems.push(`status to ${nextStatus}`);
+  if (nextPriority) reviewItems.push(`priority to ${nextPriority}`);
+  if (nextTeam) reviewItems.push(`assigned team to ${nextTeam}`);
+  if (!reviewItems.length) {
+    bulkDrawerSummary.textContent = "Choose one or more fields to update.";
     return;
   }
-  if (nextStatus && nextTeam) {
-    bulkDrawerSummary.textContent = `Will set status to ${nextStatus} and assign ${nextTeam} for ${selectedCount} ticket(s).`;
-    return;
-  }
-  if (nextStatus) {
-    bulkDrawerSummary.textContent = `Will update status to ${nextStatus} for ${selectedCount} ticket(s).`;
-    return;
-  }
-  bulkDrawerSummary.textContent = `Will assign ${nextTeam} for ${selectedCount} ticket(s).`;
+  bulkDrawerSummary.textContent = `Will update ${reviewItems.join(", ")} for ${selectedCount} ticket(s).`;
 }
 
 function updateBulkApplyState() {
   if (!(bulkDrawerApplyBtn instanceof HTMLButtonElement)) return;
   const selectedCount = getSelectedManageTickets().length;
-  const nextStatus =
-    bulkDrawerStatusSelect instanceof HTMLSelectElement
-      ? String(bulkDrawerStatusSelect.value || "").trim()
-      : "";
-  const nextTeam =
-    bulkDrawerTeamSelect instanceof HTMLSelectElement
-      ? String(bulkDrawerTeamSelect.value || "").trim()
-      : "";
-  const hasChanges = Boolean(nextStatus || nextTeam);
+  const nextStatus = getSelectValueOrEmpty(bulkDrawerStatusSelect);
+  const nextPriority = getSelectValueOrEmpty(bulkDrawerPrioritySelect);
+  const nextTeam = getSelectValueOrEmpty(bulkDrawerTeamSelect);
+  const hasChanges = Boolean(nextStatus || nextPriority || nextTeam);
   const canApply = selectedCount > 0 && hasChanges;
   bulkDrawerApplyBtn.disabled = !canApply;
   bulkDrawerApplyBtn.textContent = canApply ? "Apply Changes" : "Select Changes";
@@ -753,6 +780,126 @@ function showUpdateToast({ title, detail, tone = "success" }) {
     toast?.classList.remove("show");
     toast?.classList.add("hidden");
   }, dismissMs);
+}
+
+function getSelectValueOrEmpty(selectElement) {
+  if (!(selectElement instanceof HTMLSelectElement)) return "";
+  const value = String(selectElement.value || "").trim();
+  return value === BULK_UNCHANGED_VALUE ? "" : value;
+}
+
+function collectTicketFieldChanges(ticket, nextValues) {
+  const changes = [];
+  if (nextValues.status !== ticket.status) {
+    changes.push({ key: "status", label: "Status", from: ticket.status, to: nextValues.status });
+  }
+  if (nextValues.priority !== ticket.priority) {
+    changes.push({ key: "priority", label: "Priority", from: ticket.priority, to: nextValues.priority });
+  }
+  if (nextValues.assignedTo !== ticket.assignedTo) {
+    changes.push({ key: "assignedTo", label: "Assigned Team", from: ticket.assignedTo, to: nextValues.assignedTo });
+  }
+  return changes;
+}
+
+function getManageRowDraftValues(ticket, row) {
+  const statusSelect = row.querySelector('select[data-control="status"]');
+  const prioritySelect = row.querySelector('select[data-control="priority"]');
+  const teamSelect = row.querySelector('select[data-control="team"]');
+  const rawPriority = prioritySelect instanceof HTMLSelectElement ? String(prioritySelect.value || ticket.priority) : ticket.priority;
+  return {
+    status: statusSelect instanceof HTMLSelectElement ? String(statusSelect.value || ticket.status) : ticket.status,
+    priority: rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority,
+    assignedTo: teamSelect instanceof HTMLSelectElement ? String(teamSelect.value || ticket.assignedTo) : ticket.assignedTo,
+  };
+}
+
+function updateManageRowDirtyState(row, ticket) {
+  if (!(row instanceof HTMLTableRowElement) || !ticket) return;
+  const nextValues = getManageRowDraftValues(ticket, row);
+  const changes = collectTicketFieldChanges(ticket, nextValues);
+  const changeMap = new Map(changes.map((entry) => [entry.key, entry]));
+  row.classList.toggle("is-dirty", changes.length > 0);
+
+  row.querySelectorAll("select[data-control]").forEach((select) => {
+    if (!(select instanceof HTMLSelectElement)) return;
+    const control = String(select.dataset.control || "");
+    const changeKey = control === "team" ? "assignedTo" : control;
+    const hasChanged = changeMap.has(changeKey);
+    select.classList.toggle("is-modified", hasChanged);
+    select.classList.toggle("is-unchanged", !hasChanged);
+  });
+
+  const review = row.querySelector(".table-change-review");
+  if (review instanceof HTMLElement) {
+    review.innerHTML = changes.length
+      ? changes
+          .map(
+            (change) =>
+              `<span class="change-pill modified">${escapeHtml(change.label)}: ${escapeHtml(change.from)} -> ${escapeHtml(change.to)}</span>`
+          )
+          .join("")
+      : `<span class="change-pill unchanged">No pending changes</span>`;
+  }
+
+  const updateButton = row.querySelector('button[data-control="update"]');
+  if (updateButton instanceof HTMLButtonElement) {
+    updateButton.disabled = changes.length === 0;
+    updateButton.textContent = changes.length ? "Save Changes" : "No Changes";
+  }
+}
+
+function updateModalDirtyState(ticket) {
+  if (!ticket || !adminTicketModalContent) return;
+  const statusSelect = document.getElementById("adminModalStatusSelect");
+  const prioritySelect = document.getElementById("adminModalPrioritySelect");
+  const teamSelect = document.getElementById("adminModalTeamSelect");
+  if (!(statusSelect instanceof HTMLSelectElement)) return;
+  if (!(prioritySelect instanceof HTMLSelectElement)) return;
+  if (!(teamSelect instanceof HTMLSelectElement)) return;
+
+  const nextValues = {
+    status: String(statusSelect.value || ticket.status),
+    priority: String(prioritySelect.value || ticket.priority),
+    assignedTo: String(teamSelect.value || ticket.assignedTo),
+  };
+  const changes = collectTicketFieldChanges(ticket, nextValues);
+  const changeMap = new Map(changes.map((entry) => [entry.key, entry]));
+
+  [
+    { element: statusSelect, key: "status" },
+    { element: prioritySelect, key: "priority" },
+    { element: teamSelect, key: "assignedTo" },
+  ].forEach(({ element, key }) => {
+    const hasChanged = changeMap.has(key);
+    element.classList.toggle("is-modified", hasChanged);
+    element.classList.toggle("is-unchanged", !hasChanged);
+  });
+
+  const review = document.getElementById("adminModalChangeReview");
+  if (review) {
+    review.innerHTML = changes.length
+      ? changes
+          .map(
+            (change) =>
+              `<span class="change-pill modified">${escapeHtml(change.label)}: ${escapeHtml(change.from)} -> ${escapeHtml(change.to)}</span>`
+          )
+          .join("")
+      : `<span class="change-pill unchanged">No pending changes</span>`;
+  }
+
+  const summary = document.getElementById("adminModalChangeSummary");
+  if (summary) {
+    summary.textContent = changes.length
+      ? `${changes.length} field change(s) ready to save.`
+      : "All fields match the current saved ticket values.";
+  }
+
+  const updateButton = adminTicketModalContent.querySelector('button[data-modal-control="update-ticket"]');
+  if (updateButton instanceof HTMLButtonElement) {
+    updateButton.disabled = changes.length === 0;
+    updateButton.textContent = changes.length ? "Save Ticket Changes" : "No Changes";
+  }
 }
 
 function createTeamIdFromName(name, existingTeams) {
@@ -1262,6 +1409,7 @@ function syncOverviewRowControls(ticket) {
   if (selectCheckbox instanceof HTMLInputElement) {
     selectCheckbox.checked = selectedManageTicketIds.has(String(ticket.ticketId));
   }
+  updateManageRowDirtyState(row, ticket);
 }
 
 
@@ -1645,6 +1793,52 @@ async function persistOverviewTicketUpdate(ticket) {
   }
 }
 
+async function persistOverviewBulkTicketUpdate(tickets, updates) {
+  const ticketIds = Array.isArray(tickets) ? tickets.map((ticket) => String(ticket.ticketId || "")).filter(Boolean) : [];
+  if (!ticketIds.length || !updates || !Object.keys(updates).length) {
+    return { ok: false, message: "No tickets or updates provided." };
+  }
+  try {
+    const accessToken = await ensureAdminAccessToken();
+    const response = await fetch(resolveApiUrl("/api/tickets_bulk_update"), {
+      method: "PATCH",
+      headers: apiHeaders({ "Content-Type": "application/json" }, accessToken),
+      body: JSON.stringify({ ticketIds, updates }),
+    });
+    if (!response.ok) {
+      return { ok: false, message: `Bulk update request failed (${response.status}).` };
+    }
+
+    const data = await response.json().catch(() => null);
+    const savedTickets = Array.isArray(data?.tickets) ? data.tickets.map(normalizeAdminTicket) : [];
+    if (savedTickets.length) {
+      const savedById = new Map(savedTickets.map((item) => [String(item.ticketId), item]));
+      allTicketsState.forEach((ticket) => {
+        const savedTicket = savedById.get(String(ticket.ticketId));
+        if (savedTicket) Object.assign(ticket, savedTicket);
+      });
+
+      const cachedTickets = loadRequesterTicketCache();
+      if (cachedTickets.length) {
+        const nextCachedTickets = cachedTickets.map((item) => {
+          const itemId = String(item?.ticket_id || item?.ticketId || item?.id || "");
+          const savedTicket = savedById.get(itemId);
+          return savedTicket ? { ...item, ...savedTicket } : item;
+        });
+        saveRequesterTicketCache(nextCachedTickets);
+      }
+    }
+
+    const missingCount = Array.isArray(data?.missingTicketIds) ? data.missingTicketIds.length : 0;
+    return {
+      ok: true,
+      message: `${savedTickets.length} ticket(s) synced${missingCount ? `, ${missingCount} missing` : ""}.`,
+    };
+  } catch {
+    return { ok: false, message: `${ticketIds.length} ticket(s) updated in the table, but backend sync failed.` };
+  }
+}
+
 async function persistAccessRequestDecision({ requestId, status, reviewedBy }) {
   if (!API_BASE_CONFIGURED || !requestId) return true;
   try {
@@ -1786,14 +1980,22 @@ async function renderTicketDetails(ticket) {
           </select>
         </label>
       </div>
+      <div class="change-review-card">
+        <p class="change-review-label">Review pending edits</p>
+        <p class="change-review-summary" id="adminModalChangeSummary">All fields match the current saved ticket values.</p>
+        <div class="change-pill-list" id="adminModalChangeReview">
+          <span class="change-pill unchanged">No pending changes</span>
+        </div>
+      </div>
       <div class="detail-actions">
-        <button class="table-btn update" type="button" data-modal-control="update-ticket">Update Ticket</button>
+        <button class="table-btn update" type="button" data-modal-control="update-ticket" disabled>No Changes</button>
       </div>
     </section>
   `;
   adminTicketModalContent.innerHTML = sharedTicketView.renderTicketDetailLayout
     ? sharedTicketView.renderTicketDetailLayout(ticket, { extraSectionHtml })
     : "";
+  updateModalDirtyState(ticket);
 }
 
 function bindOverviewInteractions() {
@@ -1826,25 +2028,35 @@ function bindOverviewInteractions() {
     if (!(teamSelect instanceof HTMLSelectElement)) return;
 
     const nextStatus = String(statusSelect.value || ticket.status);
-    const nextPriority = String(prioritySelect.value || ticket.priority);
+    const rawPriority = String(prioritySelect.value || ticket.priority);
+    const nextPriority = rawPriority === BULK_UNCHANGED_VALUE ? ticket.priority : rawPriority;
     const nextTeam = String(teamSelect.value || ticket.assignedTo);
     applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
   });
 
   ticketsBody.addEventListener("change", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    if (target.dataset.control !== "select-ticket") return;
-    const ticketId = String(target.dataset.ticketId || "");
-    if (!ticketId) return;
-    if (target.checked) selectedManageTicketIds.add(ticketId);
-    else selectedManageTicketIds.delete(ticketId);
-    const selectAll = document.getElementById("manageSelectAll");
-    if (selectAll instanceof HTMLInputElement) {
-      const rows = Array.from(ticketsBody.querySelectorAll('input[data-control="select-ticket"]'));
-      selectAll.checked = rows.length > 0 && rows.every((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked);
+    if (target instanceof HTMLInputElement && target.dataset.control === "select-ticket") {
+      const ticketId = String(target.dataset.ticketId || "");
+      if (!ticketId) return;
+      if (target.checked) selectedManageTicketIds.add(ticketId);
+      else selectedManageTicketIds.delete(ticketId);
+      const selectAll = document.getElementById("manageSelectAll");
+      if (selectAll instanceof HTMLInputElement) {
+        const rows = Array.from(ticketsBody.querySelectorAll('input[data-control="select-ticket"]'));
+        selectAll.checked = rows.length > 0 && rows.every((checkbox) => checkbox instanceof HTMLInputElement && checkbox.checked);
+      }
+      updateBulkSelectionUi();
+      return;
     }
-    updateBulkSelectionUi();
+
+    if (!(target instanceof HTMLSelectElement) || !target.matches('select[data-control]')) return;
+    const row = target.closest("tr");
+    const ticketId = String(target.dataset.ticketId || "");
+    const ticket = allTicketsState.find((item) => String(item.ticketId) === ticketId);
+    if (row instanceof HTMLTableRowElement && ticket) {
+      updateManageRowDirtyState(row, ticket);
+    }
   });
 
   adminTicketModalContent?.addEventListener("click", async (event) => {
@@ -1864,6 +2076,14 @@ function bindOverviewInteractions() {
     const nextPriority = String(prioritySelect.value || ticket.priority);
     const nextTeam = String(teamSelect.value || ticket.assignedTo);
     await applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, target);
+  });
+
+  adminTicketModalContent?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const ticket = allTicketsState.find((item) => item.ticketId === activeOverviewModalTicketId);
+    if (!ticket) return;
+    updateModalDirtyState(ticket);
   });
 
   const selectAllCheckbox = document.getElementById("manageSelectAll");
@@ -1894,6 +2114,8 @@ function bindOverviewInteractions() {
 
   bulkDrawerStatusSelect?.addEventListener("change", updateBulkDrawerSummary);
   bulkDrawerStatusSelect?.addEventListener("change", updateBulkApplyState);
+  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkDrawerSummary);
+  bulkDrawerPrioritySelect?.addEventListener("change", updateBulkApplyState);
   bulkDrawerTeamSelect?.addEventListener("change", updateBulkDrawerSummary);
   bulkDrawerTeamSelect?.addEventListener("change", updateBulkApplyState);
 
@@ -1907,16 +2129,15 @@ function bindOverviewInteractions() {
   });
 
   bulkDrawerApplyBtn?.addEventListener("click", async () => {
-    const nextStatus =
-      bulkDrawerStatusSelect instanceof HTMLSelectElement
-        ? String(bulkDrawerStatusSelect.value || "").trim()
-        : "";
-    const nextTeam =
-      bulkDrawerTeamSelect instanceof HTMLSelectElement
-        ? String(bulkDrawerTeamSelect.value || "").trim()
-        : "";
-    if (!nextStatus && !nextTeam) {
-      showUpdateToast({ title: "No changes selected", detail: "Choose status, team, or both.", tone: "warning" });
+    const nextStatus = getSelectValueOrEmpty(bulkDrawerStatusSelect);
+    const nextPriority = getSelectValueOrEmpty(bulkDrawerPrioritySelect);
+    const nextTeam = getSelectValueOrEmpty(bulkDrawerTeamSelect);
+    if (!nextStatus && !nextPriority && !nextTeam) {
+      showUpdateToast({
+        title: "No changes selected",
+        detail: "Choose status, priority, team, or any combination.",
+        tone: "warning",
+      });
       return;
     }
     const selectedTickets = getSelectedManageTickets();
@@ -1928,24 +2149,35 @@ function bindOverviewInteractions() {
       bulkDrawerApplyBtn.disabled = true;
       bulkDrawerApplyBtn.textContent = "Applying...";
     }
-    await Promise.all(
-      selectedTickets.map((ticket) => applyTicketChanges(ticket, nextStatus, ticket.priority, nextTeam, null, true))
-    );
+    selectedTickets.forEach((ticket) => {
+      ticket.status = nextStatus || ticket.status;
+      ticket.priority = nextPriority || ticket.priority;
+      ticket.assignedTo = nextTeam || ticket.assignedTo;
+      ticket.updated_at = new Date().toISOString();
+      syncOverviewRowControls(ticket);
+    });
+    recalculateOverviewMetrics();
+    const result = await persistOverviewBulkTicketUpdate(selectedTickets, {
+      ...(nextStatus ? { status: nextStatus } : {}),
+      ...(nextPriority ? { priority: nextPriority } : {}),
+      ...(nextTeam ? { assignedTo: nextTeam } : {}),
+    });
     if (bulkDrawerApplyBtn instanceof HTMLButtonElement) {
       bulkDrawerApplyBtn.disabled = false;
       bulkDrawerApplyBtn.textContent = "Apply Changes";
     }
     showUpdateToast({
-      title: "Bulk update complete",
-      detail: `${selectedTickets.length} ticket(s) updated.`,
-      tone: "success",
+      title: result.ok ? "Bulk update complete" : "Bulk update saved locally",
+      detail: result.message || `${selectedTickets.length} ticket(s) updated.`,
+      tone: result.ok ? "success" : "warning",
     });
     selectedManageTicketIds.clear();
     renderManageTickets(allTicketsState);
     const selectAll = document.getElementById("manageSelectAll");
     if (selectAll instanceof HTMLInputElement) selectAll.checked = false;
-    if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "";
-    if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "";
+    if (bulkDrawerStatusSelect instanceof HTMLSelectElement) bulkDrawerStatusSelect.value = "Open";
+    if (bulkDrawerPrioritySelect instanceof HTMLSelectElement) bulkDrawerPrioritySelect.value = BULK_UNCHANGED_VALUE;
+    if (bulkDrawerTeamSelect instanceof HTMLSelectElement) bulkDrawerTeamSelect.value = "Unassigned";
     closeBulkEditDrawer();
     updateBulkSelectionUi();
   });
@@ -2016,7 +2248,9 @@ function renderManageTickets(tickets) {
         <td>${escapeHtml(ticket.issue)}</td>
         <td>${escapeHtml(ticket.category)}</td>
         <td>
+          <div class="ticket-field-stack">
           <select class="table-select" data-control="priority" data-ticket-id="${escapeHtml(ticket.ticketId)}">
+            <option value="${escapeHtml(BULK_UNCHANGED_VALUE)}">__unchanged__</option>
             ${overviewPriorityOptions
               .map(
                 (priority) =>
@@ -2026,8 +2260,10 @@ function renderManageTickets(tickets) {
               )
               .join("")}
           </select>
+          </div>
         </td>
         <td>
+          <div class="ticket-field-stack">
           <select class="table-select" data-control="status" data-ticket-id="${escapeHtml(ticket.ticketId)}">
             ${overviewStatusOptions
               .map(
@@ -2038,8 +2274,10 @@ function renderManageTickets(tickets) {
               )
               .join("")}
           </select>
+          </div>
         </td>
         <td>
+          <div class="ticket-field-stack">
           <select class="table-select" data-control="team" data-ticket-id="${escapeHtml(ticket.ticketId)}">
             ${overviewTeamOptions
               .map(
@@ -2050,6 +2288,7 @@ function renderManageTickets(tickets) {
               )
               .join("")}
           </select>
+          </div>
         </td>
         <td>
           <div class="table-actions">
@@ -2058,14 +2297,23 @@ function renderManageTickets(tickets) {
             )}">View</button>
             <button class="table-btn update" type="button" data-control="update" data-ticket-id="${escapeHtml(
               ticket.ticketId
-            )}">Update</button>
-            
+            )}" disabled>No Changes</button>
+          </div>
+          <div class="table-change-review">
+            <span class="change-pill unchanged">No pending changes</span>
           </div>
         </td>
       </tr>
     `
     )
     .join("");
+  Array.from(manageBody.querySelectorAll("tr")).forEach((row) => {
+    if (!(row instanceof HTMLTableRowElement)) return;
+    const select = row.querySelector("[data-ticket-id]");
+    const ticketId = String(select?.getAttribute("data-ticket-id") || "");
+    const ticket = list.find((item) => String(item.ticketId) === ticketId);
+    if (ticket) updateManageRowDirtyState(row, ticket);
+  });
   updateBulkSelectionUi();
 }
 
@@ -2290,9 +2538,11 @@ async function applyTicketChanges(ticket, nextStatus, nextPriority, nextTeam, tr
       tone: ok ? "success" : "warning",
     });
   }
+  syncOverviewRowControls(ticket);
+  if (activeOverviewModalTicketId === ticket.ticketId) updateModalDirtyState(ticket);
   if (triggerButton instanceof HTMLButtonElement) {
     triggerButton.disabled = false;
-    triggerButton.textContent = "Update";
+    triggerButton.textContent = "No Changes";
   }
 }
 

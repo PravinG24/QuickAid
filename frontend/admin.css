@@ -830,6 +830,82 @@ body {
   font: inherit;
   padding: 0.32rem 0.5rem;
   cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.table-select.is-unchanged {
+  background: #f8fafc;
+  border-color: #d6dde8;
+}
+
+.table-select.is-modified {
+  background: #fff7e8;
+  border-color: #f0b458;
+  box-shadow: 0 0 0 3px rgba(240, 180, 88, 0.18);
+}
+
+#manageTicketsBody tr.is-dirty {
+  background: #fffdf7;
+}
+
+.ticket-field-stack {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.table-change-review {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+  margin-top: 0.45rem;
+}
+
+.change-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.change-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.24rem 0.58rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.change-pill.unchanged {
+  background: #eef3f8;
+  color: #547089;
+}
+
+.change-pill.modified {
+  background: #fff0d6;
+  color: #8c5a00;
+}
+
+.change-review-card {
+  border: 1px solid #e3eaf2;
+  border-radius: 0.8rem;
+  background: linear-gradient(180deg, #fffef9 0%, #fff9ee 100%);
+  padding: 0.82rem 0.88rem;
+}
+
+.change-review-label {
+  margin: 0 0 0.18rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a5a1f;
+}
+
+.change-review-summary {
+  margin: 0 0 0.55rem;
+  color: #6b7280;
+  font-size: 0.88rem;
 }
 
 .manage-toolbar {
