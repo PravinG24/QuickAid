@@ -1039,9 +1039,10 @@ a {
   margin: 0 auto;
   padding: clamp(2.5rem, 4vw, 4rem);
   overflow: hidden;
-  background:
-    linear-gradient(0deg, rgba(211, 232, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
-  box-shadow: var(--section-shell-shadow);
+  background:radial-gradient(circle at top right, rgba(219, 234, 254, 0.72), 
+  transparent 30%), 
+  linear-gradient(180deg, #f9fbff 0%, #ffffff 100%);
+;
 }
 
 .section-shell::before {
@@ -1070,8 +1071,8 @@ a {
 
 .section-shell-bright {
   background:
-    radial-gradient(circle at bottom left, rgba(219, 234, 254, 0.72), transparent 30%),
-    linear-gradient(180deg, #f9fbff 0%, #ffffff 100%);
+    linear-gradient(0deg, rgba(211, 232, 255, 0.96) 0%,
+     rgba(248, 250, 252, 0.98) 100%);
 }
 
 .section-shell-dark {
