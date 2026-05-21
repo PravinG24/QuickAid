@@ -14,9 +14,23 @@
     <link rel="stylesheet" href="./branding.css" />
     <link rel="stylesheet" href="./home.css" />
     <script src="./branding.js" defer></script>
+
+    <script type="text/javascript">
+      !function(v,g,o,c,d,n,m){v.EnvConfig=d;v.AppInsightsSdk=n;v[n]=v[n]||function(n){var o=g.createElement("script");o.src=c;g.head.appendChild(o);v[n]=new Microsoft.ApplicationInsights.ApplicationInsights({config:{connectionString:window.QUICKAID_APPINSIGHTS_STRING}})}(m)}(window,document,0,"https://js.monitor.azure.com/scripts/b/ext/ai.cl.2.min.js",0,0,"appInsights");
+
+      // Verify the string was replaced successfully by GitHub Actions before tracking
+      if (window.QUICKAID_APPINSIGHTS_STRING && !window.QUICKAID_APPINSIGHTS_STRING.startsWith("__")) {
+        window.appInsights.loadAppInsights();
+        window.appInsights.trackPageView(); 
+        console.log("Application Insights browser telemetry tracking active.");
+      } else {
+        console.warn("Application Insights connection string is empty or unreplaced.");
+      }
+    </script>
+
   </head>
   <body class="home-page">
-    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <!-- <a class="skip-link" href="#main-content">Skip to main content</a> -->
 
     <header class="home-header">
       <a class="home-brand" href="./index.html" aria-label="QuickAid home">
