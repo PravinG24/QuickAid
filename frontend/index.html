@@ -18,17 +18,39 @@
     <script src="./config.js"></script>
 
     <script type="text/javascript">
-      !function(v,g,o,c,d,n,m){v.Envconfig.js=d;v.AppInsightsSdk=n;v[n]=v[n]||function(n){var o=g.createElement("script");o.src=c;g.head.appendChild(o);v[n]=new Microsoft.ApplicationInsights.ApplicationInsights({config:{connectionString:window.QUICKAID_APPINSIGHTS_STRING}})}(m)}(window,document,0,"https://js.monitor.azure.com/scripts/b/ext/ai.cl.2.min.js",0,0,"appInsights");
+        (function() {
+          // Create an automated script loader tag
+          var scriptTag = document.createElement("script");
+          scriptTag.src = "https://js.monitor.azure.com/scripts/b/ext/ai.cl.2.min.js";
+          scriptTag.crossOrigin = "anonymous";
+          scriptTag.async = true;
 
-      // Verify the string was replaced successfully by GitHub Actions before tracking
-      if (window.QUICKAID_APPINSIGHTS_STRING && !window.QUICKAID_APPINSIGHTS_STRING.startsWith("__")) {
-        window.appInsights.loadAppInsights();
-        window.appInsights.trackPageView(); 
-        console.log("Application Insights browser telemetry tracking active.");
-      } else {
-        console.warn("Application Insights connection string is empty or unreplaced.");
-      }
-    </script>
+          // Once the external Microsoft CDN file finishes downloading...
+          scriptTag.onload = function() {
+            if (typeof Microsoft !== 'undefined' && window.QUICKAID_APPINSIGHTS_STRING && !window.QUICKAID_APPINSIGHTS_STRING.startsWith("__")) {
+              try {
+                window.appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({ config: {
+                  connectionString: window.QUICKAID_APPINSIGHTS_STRING
+                }});
+                window.appInsights.loadAppInsights();
+                window.appInsights.trackPageView();
+                console.log("Application Insights browser telemetry tracking active.");
+              } catch (err) {
+                console.error("Failed to initialize App Insights instances:", err);
+              }
+            } else {
+              console.warn("Application Insights connection string is empty, unreplaced, or blocked.");
+            }
+          };
+
+          scriptTag.onerror = function() {
+            console.error("Failed to download the Application Insights CDN file script.");
+          };
+
+          // Append to head element to initiate execution
+          document.head.appendChild(scriptTag);
+        })();
+      </script>
 
   </head>
   <body class="home-page">
