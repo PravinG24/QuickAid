@@ -106,10 +106,14 @@ function getEntraMsalInstance() {
     throw new Error("Microsoft sign-in is not configured yet.");
   }
   if (!entraMsalInstance) {
+    // Use multi-tenant authority to allow accounts from any Entra organization + guest accounts
+    // Set to your tenant for single-tenant, or 'common' for multi-tenant (supports external accounts)
+    const authority = `https://login.microsoftonline.com/common`;
+    
     entraMsalInstance = new window.msal.PublicClientApplication({
       auth: {
         clientId: ENTRA_CLIENT_ID,
-        authority: `https://login.microsoftonline.com/${ENTRA_TENANT_ID}`,
+        authority: authority,
         redirectUri: ENTRA_REDIRECT_URI,
         navigateToLoginRequestUrl: false,
       },
@@ -190,24 +194,31 @@ async function loginWithMicrosoft() {
   const claims = decodeJwtPayload(tokenResult.accessToken || tokenResult.idToken || "");
   const email = getTokenEmail(claims, account);
   const name = getTokenName(claims, account, email);
-  const isAdmin = isAdminRoleClaim(claims);
-
-  if (isAdmin) {
-    let approvalLookup = null;
-    try {
-      approvalLookup = await apiGet(
-        "/api/approvals/admin?mine=true",
-        tokenResult.accessToken || tokenResult.idToken || ""
-      );
-    } catch (error) {
-      const message = String(error?.message || "");
-      if (message.includes("404") || message.toLowerCase().includes("not found")) {
-        throw new Error("Admin approval service is not available yet. Please try again in a moment.");
-      }
-      throw new Error(message || "Failed to validate admin approval status.");
+  const token = tokenResult.accessToken || tokenResult.idToken || "";
+  let approvalLookup = null;
+  try {
+    approvalLookup = await apiGet("/api/approvals/admin?mine=true", token);
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (message.includes("404") || message.toLowerCase().includes("not found")) {
+      throw new Error("Admin approval service is not available yet. Please try again in a moment.");
     }
+    throw new Error(message || "Failed to validate admin approval status.");
+  }
+
+  const approvalStatus = normalizeApprovalStatus(approvalLookup);
+  const hasApprovedAdminRecord = approvalStatus === "approved" || approvalStatus === "active";
+  const isAdmin = hasApprovedAdminRecord || isAdminRoleClaim(claims);
+
+  if (hasApprovedAdminRecord) {
     assertAdminApprovalStatus(approvalLookup);
   } else {
+    if (approvalStatus === "pending") {
+      throw new Error("Your admin request is still pending approval.");
+    }
+    if (approvalStatus === "rejected") {
+      throw new Error("Your admin access request was rejected. Contact the system admin.");
+    }
     // For students: verify they are registered before allowing login
     try {
       const userLookup = await apiPost("/api/user_entra_lookup", { email });
@@ -223,7 +234,7 @@ async function loginWithMicrosoft() {
     email,
     role: isAdmin ? "admin" : "user",
     name,
-    token: tokenResult.accessToken || tokenResult.idToken || loginResult.idToken || "",
+    token: token || loginResult.idToken || "",
     provider: "entra",
     prefs: { notifEmail: true, notifInApp: true },
   };

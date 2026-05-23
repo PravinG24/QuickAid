@@ -10,9 +10,31 @@ from shared.secrets import get_secret
 from shared.admin_auth import _verify_entra_token
 
 
-# Admin JWT creation removed: application-issued admin tokens are no longer
-# supported. Microsoft Entra ID (Azure AD) is the required authentication
-# mechanism for admin endpoints.
+def create_admin_token(admin_id: str, email: str, name: str, ttl_hours: int = 8) -> str:
+    """Create a JWT token for admin credential authentication.
+
+    Args:
+        admin_id: Unique admin identifier
+        email: Admin email address
+        name: Admin display name
+        ttl_hours: Token time-to-live in hours
+
+    Returns:
+        Encoded JWT token string
+    """
+    secret = get_secret("JWT-SECRET", env_fallback="JWT_SECRET")
+
+    payload = {
+        "admin_id": admin_id,
+        "email": email,
+        "name": name,
+        "role": "admin",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=ttl_hours),
+    }
+
+    token = jwt.encode(payload, secret, algorithm="HS256")
+    return token
 
 
 def create_user_token(user_id: str, email: str, name: str, ttl_hours: int = 24) -> str:

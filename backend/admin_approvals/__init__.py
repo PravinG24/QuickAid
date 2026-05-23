@@ -18,7 +18,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             if not token:
                 return func.HttpResponse(json.dumps({"error": "Missing bearer token."}), status_code=401, mimetype="application/json")
             try:
-                payload = _verify_entra_token(token)
+                payload = _verify_entra_token(token, require_role=False)
             except Exception as exc:
                 logging.warning("Admin approval status lookup failed: %s", exc)
                 return func.HttpResponse(json.dumps({"error": "Invalid admin token."}), status_code=401, mimetype="application/json")

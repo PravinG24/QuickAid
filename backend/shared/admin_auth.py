@@ -1,8 +1,8 @@
 """Admin authorization helpers for QuickAid.
 
 This module enforces Microsoft Entra ID (Azure AD) access tokens for
-admin-only endpoints. Legacy application-issued JWTs are no longer
-accepted.
+admin-only endpoints. Legacy application-issued JWTs are also accepted
+for the admin credential path.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from urllib.request import urlopen
 
 import jwt
 
+from shared.secrets import get_secret
 
 
 def _extract_bearer_token(req) -> str:
@@ -28,6 +29,17 @@ def _extract_bearer_token(req) -> str:
         return token
 
     return ""
+
+
+def _get_entra_audience() -> str:
+    audience = str(
+        os.environ.get("ENTRA_AUDIENCE", "")
+        or os.environ.get("ENTRA_API_AUDIENCE", "")
+        or os.environ.get("QUICKAID_ENTRA_API_AUDIENCE", "")
+    ).strip()
+    if not audience:
+        raise RuntimeError("ENTRA_AUDIENCE is not configured.")
+    return audience
 
 
 @lru_cache(maxsize=1)
@@ -43,10 +55,8 @@ def _entra_metadata() -> Dict[str, Any]:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
-    audience = str(os.environ.get("ENTRA_AUDIENCE", "")).strip()
-    if not audience:
-        raise RuntimeError("ENTRA_AUDIENCE is not configured.")
+def _verify_entra_token(token: str, require_role: bool = True) -> Optional[Dict[str, Any]]:
+    audience = _get_entra_audience()
 
     required_role = str(os.environ.get("ENTRA_REQUIRED_ROLE", "Admin")).strip() or "Admin"
     metadata = _entra_metadata()
@@ -99,14 +109,28 @@ def _verify_entra_token(token: str) -> Optional[Dict[str, Any]]:
         logging.warning("Entra token issuer mismatch. token_iss=%s allowed=%s", token_iss, allowed_issuers)
         return None
 
-    roles = payload.get("roles") or []
-    if isinstance(roles, str):
-        roles = [roles]
+    if require_role:
+        roles = payload.get("roles") or []
+        if isinstance(roles, str):
+            roles = [roles]
 
-    # normalize to lowercase for comparison
-    norm_roles = [str(r).lower() for r in roles if r]
-    if required_role.lower() not in norm_roles:
-        logging.warning("Entra token missing required role. required=%s roles=%s", required_role, norm_roles)
+        norm_roles = [str(r).lower() for r in roles if r]
+        if required_role.lower() not in norm_roles:
+            logging.warning("Entra token missing required role. required=%s roles=%s", required_role, norm_roles)
+            return None
+
+    return payload
+
+
+def _verify_admin_app_token(token: str) -> Optional[Dict[str, Any]]:
+    secret = get_secret("JWT-SECRET", env_fallback="JWT_SECRET")
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return None
+
+    role = str(payload.get("role") or "").strip().lower()
+    if role != "admin":
         return None
 
     return payload
@@ -134,19 +158,33 @@ def _is_approved_admin(email: str) -> bool:
         return False
 
     return True
+
+
 def authorize_admin_request(req) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
-    """Authorize an admin request using Microsoft Entra ID tokens only.
+    """Authorize an admin request using Microsoft Entra ID tokens.
 
     Returns (payload, auth_type, error_message). On success payload is the
-    decoded Entra token and auth_type is "entra". On failure payload and
-    auth_type are None and error_message explains the reason.
+    decoded token and auth_type is either "app" or "entra". On failure
+    payload and auth_type are None and error_message explains the reason.
     """
     token = _extract_bearer_token(req)
     if not token:
         return None, None, "Missing bearer token."
 
+    admin_app_payload = _verify_admin_app_token(token)
+    if admin_app_payload:
+        email = str(
+            admin_app_payload.get("email")
+            or admin_app_payload.get("preferred_username")
+            or admin_app_payload.get("upn")
+            or ""
+        ).strip().lower()
+        if not _is_approved_admin(email):
+            return None, None, "Your admin request is pending approval."
+        return admin_app_payload, "app", None
+
     try:
-        entra_payload = _verify_entra_token(token)
+        entra_payload = _verify_entra_token(token, require_role=True)
     except Exception as exc:
         logging.warning("Entra token validation failed: %s", exc)
         return None, None, "Invalid Entra admin token or missing required role."

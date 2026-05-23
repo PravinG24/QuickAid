@@ -1,0 +1,72 @@
+No | Type of Source | Topic / Area | Author / Organization | Year | Purpose | Full Reference
+1 | Academic Journal | Cloud Computing for Education Platforms | Alakuu, A., & Dake, D. K. (2025) | 2019 | Study how cloud computing supports scalable education platforms | ‌Alakuu, A., & Dake, D. K. (2025). Cloud Computing in Education: A review of Architecture, Applications, and Integration Challenges. International Journal of Computer Applications, 186(66), 49–65. https://doi.org/10.5120/ijca2025924472
+
+‌
+2 | Academic Journal | Microservices and Cloud-Native Architecture | Dragoni, N. et al. | 2016 | Understand microservices architecture used in modern cloud applications | Dragoni, N., Saverio Giallorenzo, Lafuente, A. L., Mazzara, M., & Safina, L. (2017, January 1). Microservices: yesterday, today, and tomorrow. https://www.researchgate.net/publication/315664446_Microservices_yesterday_today_and_tomorrow
+
+‌
+3 | Academic Journal | Cloud Computing for Educational Institutions | Mirza Zainab and V.S. Dhaka  | 2023 | Provide framework for cloud PaaS adoption in education platforms | Zainab, M., & Dhaka, V. (2014). Cloud Computing with Azure PaaS for Educational Institutions. International Journal of Information and Computation Technology, 4(2), 139–144. https://www.ripublication.com/irph/ijict_spl/ijictv4n2spl_06.pdf
+
+‌
+4 | Academic Journal | Digital Ticketing Systems Impact | RSIS / IJRIAS | 2025 | Evaluate ticket tracking systems and user satisfaction in organizations | Lucero, H. R., Angeles, K. C. C., Soriano, J. R. B., Manalo, S. M. C., Sibag, K. J., & Galela, P. (2025). Impact Analysis of Integrated Digital Ticketing Systems on Support Services in Schools and Universities. International Journal of Research and Innovation in Applied Science, 10(11), 1136–1149. https://doi.org/10.51584/ijrias.2025.101100105
+
+5 | Academic Journal | Ticket classification for university helpdesk | Yulio Ferdinand, Muharman Lubis, Oktariani Nurul Pratiwi | 2026 | Demonstrate how university helpdesk tickets can be automatically categorized to improve support efficiency. | View of Classification of University IT Helpdesk Tickets Using Support Vector Machine with Hyperparameter Optimization. (2026). Atmaluhur.ac.id. https://jurnal.atmaluhur.ac.id/index.php/sisfokom/article/view/2413/1369
+
+‌
+6 | Academic Book | IT Service Management (Helpdesk lifecycle) | AXELOS | 2019 | Understand ticket lifecycle and helpdesk best practices | ITIL ® Foundation ITIL 4 Edition 2. (n.d.). https://abim.go.ug/sites/files/%28ITIL%29%20Axelos%20-%20ITIL%20Foundation%204%20edition-Axelos%20%282019%29%5B1%5D.pdf
+
+‌
+7 | Academic Book | Software Engineering & System Design | Ian Sommerville | 2016 | Apply software engineering lifecycle and system architecture design | addarkemot. (2025). Software Engineering 10th Edition by Ian Sommerville (eBook PDF). Slideshare. https://www.slideshare.net/slideshow/software-engineering-10th-edition-by-ian-sommerville-ebook-pdf/277687501
+8 | Academic Journal | Cloud ticket aggregation and incident management | Liu, J., He, S., Chen, Z., Li, L., Kang, Y., Zhang, X., He, P., Zhang, H., Lin, Q., Xu, Z., Rajmohan, S., Zhang, D., & Lyu, M. R.  | 2023 | Shows how large-scale cloud systems like Azure manage and optimize support tickets. | Liu, J., He, S., Chen, Z., Li, L., Kang, Y., Zhang, X., He, P., Zhang, H., Lin, Q., Xu, Z., Rajmohan, S., Zhang, D., & Lyu, M. R. (2023). Incident-aware Duplicate Ticket Aggregation for Cloud Systems. ArXiv.org. https://arxiv.org/abs/2302.09520
+
+‌
+9 | Research Paper | Azure Ticketing Integration | Journal of Electrical Engineering, Electronics, Control and Computer Science | 2023 | To justify the Web form interface and task integration using Azure Cognitive Services. | Rosca, C. M., Alexandru Eduard Gerea, & Bold, R. A. (2023). Innovative Project Management Tool with Azure Services. Journal of Electrical Engineering, Electronics, Control and Computer Science, 9(4), 25–30. https://jeeeccs.net/index.php/journal/article/view/353
+
+‌
+10 | Research Paper | Scalable Microservices | EA Journals | 2025 | To quantify the cost savings of using Azure Functions for bursty campus workloads. | Dadi, C. B. (2025). Serverless Architectures and Function-as-a-Service (FaaS): Redefining Application Design and Scalability with Azure Functions. European Journal of Computer Science and Information Technology, 13(34), 97–106. https://doi.org/10.37745/ejcsit.2013/vol13n3497106
+
+‌
+11 | Research Paper | Cloud Platform Comparison | ResearchGate | 2025 | To argue why Azure App Service and Functions integrate best for campus-wide IT models. | Rodriguez, R. (2025). Comparative Market Review and Analysis of Different Cloud Computing Providers for Hosting TAKDA WEBCPASMS PROTOMODEL. APCORE Online Journal, 1(1), 461–472. https://doi.org/10.65232/pcmmf682
+
+‌
+12 | Research Paper | Azure Serverless Design | ResearchGate | 2024 | To justify event-driven logic for automated email triggers and rapid scaling during high-traffic periods. | Toosi, A. N., Javadi, B., Iosup, A., Smirni, E., & Dustdar, S. (2024). Serverless Computing for Next-generation Application Development. Future Generation Computer Systems, 107573. https://doi.org/10.1016/j.future.2024.107573
+
+‌
+13 | Article | Scalable Notifications | Microsoft Learn | 2025 | To provide the technical architecture for Automated email notifications via SendGrid. | manuelap-msft. (2025, December 9). Implement a scalable notification system with Power Platform - Power Platform. Microsoft.com. https://learn.microsoft.com/en-us/power-platform/architecture/reference-architectures/scalable-notification-system
+
+‌
+14 | Article | AI & Ticket Handling | Microsoft / USF | 2024 | To prove how Azure services reduce ticket resolution time in a university setting. | Team, M. E. (2024, August 27). 5 ways Microsoft Azure can reimagine student experiences and streamline operations | Microsoft Education Blog. Microsoft Education Blog. https://www.microsoft.com/en-us/education/blog/2024/08/5-ways-microsoft-azure-can-reimagine-student-experiences-and-streamline-operations/
+
+15 | Article | Persistent Storage | Microsoft Azure | 2018 | To justify the use of Azure Cosmos DB for high-availability ticket storage. | Shukla, D. (2018, September 24). Azure Cosmos DB: Pushing the frontier of globally distributed databases | Microsoft Azure Blog. Microsoft Azure Blog. https://azure.microsoft.com/en-us/blog/azure-cosmos-db-pushing-the-frontier-of-globally-distributed-databases/
+
+‌
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 
+ |  |  |  |  |  | 

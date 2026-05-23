@@ -6,6 +6,8 @@ import hmac
 import os
 from azure.cosmos import CosmosClient
 
+from shared.admin_approvals import find_admin_request_by_email, get_bootstrap_admin_email
+from shared.jwt_utils import create_admin_token
 from shared.secrets import get_secret
 
 
@@ -60,13 +62,45 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json",
         )
 
-    # Legacy JWT issuance has been removed. Admins must authenticate via
-    # Microsoft Entra ID (Azure AD). Return a clear 403 response so callers
-    # know to switch to the Entra login flow.
+    approval_status = str(admin.get("approvalStatus") or admin.get("status") or "").strip().lower()
+    bootstrap_email = get_bootstrap_admin_email()
+    approved = approval_status in {"approved", "active"} or email == bootstrap_email
+    if not approved:
+        request = find_admin_request_by_email(container, email)
+        approval_status = str(
+            (request or {}).get("approvalStatus") or (request or {}).get("status") or approval_status
+        ).strip().lower()
+        approved = approval_status in {"approved", "active"} or email == bootstrap_email
+
+    if not approved:
+        if approval_status == "rejected":
+            return func.HttpResponse(
+                json.dumps({"error": "Your admin request was rejected. Contact the system admin."}),
+                status_code=403,
+                mimetype="application/json",
+            )
+        return func.HttpResponse(
+            json.dumps({"error": "Your admin request is still pending approval."}),
+            status_code=403,
+            mimetype="application/json",
+        )
+
+    token = create_admin_token(
+        admin_id=admin.get("adminId", admin.get("id", email)),
+        email=email,
+        name=admin.get("name", email),
+    )
+
     return func.HttpResponse(
         json.dumps({
-            "error": "Admin login via application credentials is disabled. Use Microsoft Entra ID (Azure AD) to sign in.",
+            "adminId": admin.get("adminId", admin.get("id", email)),
+            "name": admin.get("name"),
+            "email": email,
+            "role": "admin",
+            "token": token,
+            "provider": "admin_credentials",
+            "approvalStatus": approval_status or "approved",
         }),
-        status_code=403,
+        status_code=200,
         mimetype="application/json",
     )
